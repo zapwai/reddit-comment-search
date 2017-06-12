@@ -1,0 +1,3 @@
+startdate(mmddyy):010213
+enddate(mmddyy):011013
+subreddit:Buddhism
