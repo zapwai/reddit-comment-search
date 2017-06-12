@@ -5,8 +5,8 @@
 #user is prompted for start and end dates, as well as the subreddit name.
 #these are convered to epoch dates, the number of days counted, and links for each DAY are pulled.
 
-use strict;
-use warnings;
+#use strict;
+#use warnings;
 
 use DateTime;
 

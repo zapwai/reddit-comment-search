@@ -13,8 +13,8 @@
 # Do not search for parent_id, it's buggy.
 # use id when you find the "more" listings.
 
-use strict;
-use warnings;
+#use strict;
+#use warnings;
 use JSON;
 
 my $subreddit = shift;
