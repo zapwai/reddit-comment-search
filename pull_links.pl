@@ -10,7 +10,7 @@
 
 use DateTime;
 
-my ($user_begin, $user_end, $subreddit);
+my ($user_begin, $user_end, $subreddit, $username);
 
 my $config_file = "scraper_config.txt";
 
@@ -33,6 +33,9 @@ unless (-e $config_file) {
     print "Enter subreddit (default all): ";
     $subreddit = <STDIN>;
 
+    print "Enter a username (default none): /u/";
+    $username = <STDIN>;
+
 }
 
 #Process the config file
@@ -43,10 +46,10 @@ if (-e $config_file) {
 	my @pieces = split(":", $line);
 	push @data, pop @pieces;
     }
-    ($user_begin, $user_end, $subreddit) = @data;
+    ($user_begin, $user_end, $subreddit, $username) = @data;
 }
 
-chomp ($user_begin, $user_end, $subreddit);
+chomp ($user_begin, $user_end, $subreddit, $username);
 
 my @begin_nums = split "", $user_begin;
 my @end_nums = split "", $user_end;
@@ -98,7 +101,7 @@ if ($subreddit eq "") {
     $subreddit = "all";		# set default subreddit here
 }
 
-# Check if this subreddit already exists, (in lowercase instead of proper format).
+# Check if this subreddit already exists (in lowercase or something, instead of whatever the proper format might be).
 opendir my $current_folder, "./";
 my @files_in_current_folder = readdir $current_folder;
 close $current_folder;
@@ -143,4 +146,4 @@ while ($cnt < $TOTAL_PERIODS) {
 }
 
 # Now that we've finished, pull down the actual comment threads using another script.
-exec("perl pull_comment_threads.pl $subreddit");
+exec("perl pull_comment_threads.pl $subreddit $username");

@@ -18,6 +18,7 @@
 use JSON;
 
 my $subreddit = shift;
+my $username = shift;
 
 my $TEXT;	    
 my @MORE_IDs;
@@ -161,3 +162,4 @@ foreach my $file (@files) {
     }
 }
 
+exec("perl search_username.pl $username");
