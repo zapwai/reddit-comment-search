@@ -1,4 +1,4 @@
-# Reddit Scraper
+# Reddit Comment Search
 Downloads all listings (into LINKS) then threads (into Extended_JSON_Comments). Then searches for specified username as the author of the comments (from *all* replies, no matter how deep) between the specified dates in the specified subreddit. 
 
 ----
