@@ -7,8 +7,8 @@
 
 ## Currently very inefficient. Creates two hashes for no real reason.
 
-use warnings;
-use strict;
+#use warnings;
+#use strict;
 use JSON;
 
 my ($subreddit, $username, $keywords) = (shift, shift, shift);
@@ -35,10 +35,10 @@ my %comment_content; # The body of the comments. (key is edate of comment)
 my %keyword_comment_link;
 my %keyword_comment_content;
 
-my $cnt=0; 			# testing, remove
-my $limit=10;			# testing, remove
+#my $cnt=0; 			# testing, remove
+#my $limit=10;			# testing, remove
 foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
-    last if ($cnt == $limit);	# testing remove
+#    last if ($cnt == $limit);	# testing remove
     open (my $FILE, $Thread) or die("Thread $Thread cannot be opened.\n$!\n");
     my $row = <$FILE>;
     close $FILE;
@@ -49,7 +49,7 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
     my $EndPt = index( $BrokenRow, 'Listing' ) + 4;
     my $FirstJSON= substr ( $row, 1 , ($EndPt - 3) ); 
     my $SecondJSON = substr ( $row, $EndPt , -1);
-    $cnt++;			# testing, remove
+#    $cnt++;			# testing, remove
 
     $FirstJSON = decode_json($FirstJSON);
     $SecondJSON = decode_json($SecondJSON);
