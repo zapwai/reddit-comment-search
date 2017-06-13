@@ -1,24 +1,42 @@
-# This is only top-level comments at the moment.
-# Will have to write a recursive function to parse all replies.
+#!/usr/bin/perl
 
+## Usage: search_username.pl subreddit username string
+## This will search each comment thread in the subreddit folder,
+## and produce two hashes of links, one for submissions, one for comments,
+## containing all occurrences where $username is the author.
 
-# jq "." Buddhism/Extended_JSON_Comments/15sk1n-c7r0v33.json | grep replies -C 5
+## Currently very inefficient. Creates two hashes for no real reason.
 
 use warnings;
 use strict;
 use JSON;
 
-my ($subreddit, $username) = (shift, shift);
+my ($subreddit, $username, $keywords) = (shift, shift, shift);
+
+unless (!$keywords) {
+    print "\nI will return only the threads in the $subreddit folder by /u/$username containing the string:$keywords.\n";
+}
+if (!$keywords) {
+    print "\nA general search for /u/$username in the $subreddit folder.\n";
+}
 
 # Reddit thread JSONs are two merged together. e.g. [{},{}]
-# We remove the [] and creating a header $FirstJSON and a content $SecondJSON
+# We remove the [], then create header ($FirstJSON) and content ($SecondJSON).
+# For some context check out a .json file, perhaps try the jq command. e.g.
+# jq "." Buddhism/Extended_JSON_Comments/15sk1n-c7r0v33.json | grep replies -C 5
 
-our $link;	      # ... easiest to use a global variable.
-my %submit_link;      # Submitted links by $username, keys are edates.
-my %comment_link;     # Commented links by $username (key is edate)
+our $link;	 # permalink to the thread itself.
+my %submit_link; # Submitted links by $username (key is edate of submission)
+my %comment_link; # Commented links by $username (key is edate of comment)
+
+my %comment_content; # The body of the comments. (key is edate of comment)
+
+### In the event that a string was supplied in $keywords, we use these:
+my %keyword_comment_link;
+my %keyword_comment_content;
 
 my $cnt=0; 			# testing, remove
-my $limit=5;			# testing, remove
+my $limit=10;			# testing, remove
 foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
     last if ($cnt == $limit);	# testing remove
     open (my $FILE, $Thread) or die("Thread $Thread cannot be opened.\n$!\n");
@@ -36,18 +54,17 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
     $FirstJSON = decode_json($FirstJSON);
     $SecondJSON = decode_json($SecondJSON);
 
-    my $edate;
-    
     for my $listy ( @{$FirstJSON->{data}->{children}} ) {
 	my $author = $listy->{data}->{author};
 
 	$link = "https://www.reddit.com".$listy->{data}->{permalink};
 	
-	if (&is_author($author)) {
-	    $edate = $listy->{data}->{created_utc};
-	    #	    my $id = $listy->{data}->{id}; # works for header JSON
+	if (is_username($author)) {
+	    my $edate = $listy->{data}->{created_utc};
+	    # {id} in header JSON (in content JSON it's under {link_id}).
+	    #	    my $id = $listy->{data}->{id}; 
 	    my $title = $listy->{data}->{title};
-	    $submit_link{$edate} = "<br><a href='".$link."'>".$title."</a><br>";
+	    $submit_link{$edate} = $link;
 	}
     }
 
@@ -57,44 +74,64 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
 	
 	my $author = $contenty->{data}->{author};
 	
-	if (&is_author($author)) {
-	    $edate = $contenty->{data}->{created_utc}; # not same as above
-	    my $new_link = $link.$contenty->{data}->{id}."/ ";
-	    #print $link;
-	    # Wrong.
+	if (is_username($author)) {
+	    my $edate = $contenty->{data}->{created_utc}; 
+	    my $new_link = $link.$contenty->{data}->{id};
 
-	    #my $new_link = "http://www.reddit.com/r/$subreddit/$id/comments/".$contenty->{data}->{id};
-	    
-	    # For the next version of this script...
-	    # We would search the body of this comment for keywords.
 	    my $comment = $contenty->{data}->{body};
+	    # Search for the string, if one was supplied.
+	    unless (!$keywords) {
+		if ($comment =~ /$keywords/) {
+		    $keyword_comment_link{$edate} = $new_link;
+		    $keyword_comment_content{$edate} = $comment;
+		}
+	    }
 	    
-	    $comment_link{$edate} = "<br><a href='".$new_link."'>"."</a><br>";
+	    $comment_link{$edate} = $new_link;
+	    $comment_content{$edate} = $comment;
 	}
-	
-	unless ($contenty->{data}->{replies} eq "") { # If no reply weare done. Otherwise traverse replies.
+	# If no reply we are done. Otherwise traverse the replies.
+	unless ($contenty->{data}->{replies} eq "") { 
 	    my $hash_ref_to_replies = $contenty->{data}->{replies};
-	    &traverse_replies($hash_ref_to_replies);
+	    traverse_replies($hash_ref_to_replies);
 	}
     }
 }
 
-print "\n"x3;
-print "Submissions by $username: \n";
+## We always print submissions.
+print "\n";
+print "Submissions by /u/$username: \n";
 foreach (sort keys %submit_link) {
     print "---"x10,"\n";
     print "$_: ",$submit_link{$_};
-    print "\n\n";
+    print "\n";
 }
 
-print "Comments by $username: \n";
-foreach (sort keys %comment_link) {
-    print "---"x10,"\n";
-    print "$_: ",$comment_link{$_};
-    print "\n\n";
+
+## If no keyword was supplied, print all comments by given username.
+if (!$keywords) {
+    print "Comments by /u/$username: \n";
+    foreach (sort keys %comment_link) {
+	print "---"x10,"\n";
+	print "$_: ",$comment_link{$_};
+	print "\n\n";
+	print $comment_content{$_};
+	print "\n\n";
+    }
+}
+## If a search string was supplied to $keywords, print the other hash.
+elsif ($keywords) {
+    print "Comments by /u/$username containing $keywords: \n";
+    foreach (sort keys %keyword_comment_link) {
+	print "---"x10,"\n";
+	print "$_: ",$keyword_comment_link{$_};
+	print "\n\n";
+	print $keyword_comment_content{$_};
+	print "\n\n";
+    }
 }
 
-sub is_author {
+sub is_username {
     my $author = shift;
     if ($username eq $author) {
 	return 1;
@@ -105,30 +142,28 @@ sub is_author {
 sub traverse_replies {
     my $hash_ref_to_replies = shift;
     for ( @{$hash_ref_to_replies->{data}->{children}} ) {
-	unless ($_->{kind} eq "more") { # The "continue this thread" links.
-	    #	    print " from ", $_->{data}->{author};
-	    if ( &is_author($_->{data}->{author}) ){
-		my $edate = $_->{data}->{created_utc}; # not same as above
+	# The "continue this thread" links.
+	unless ($_->{kind} eq "more") { 
+	    if ( is_username($_->{data}->{author}) ) {
+		my $edate = $_->{data}->{created_utc};
 		my $new_link = $link.$_->{data}->{id};
-		my $comment = $_->{data}->{body}; 
+		my $comment = $_->{data}->{body};
 		$comment_link{$edate} = $new_link;
+		$comment_content{$edate} = $comment;
+		# Search for the string, if it was supplied.
+		unless (!$keywords) {
+		    if ($comment =~ /$keywords/) {
+			$keyword_comment_link{$edate} = $new_link;
+			$keyword_comment_content{$edate} = $comment;
+		    }
+		}
 	    }
 	    if ($_->{data}->{replies} eq "") {
 		next;
 	    } else {
-#		print ", and then";
 		my $next_hash_ref = $_->{data}->{replies};
 		traverse_replies($next_hash_ref);
 	    }
 	}
     }
 }
-
-## Also need to fix the link that is returned on a 'more' thread.
-## Currently the link is malformed, sends you to the wrong place.
-## e.g.
-## should be
-## https://www.reddit.com/r/Buddhism/comments/15sk1n/10_must_read_life_lessons_from_buddha/c7r0v33/
-## It's printing
-## https://www.reddit.com/r/Buddhism/15sk1n/comments/c7pnn6k/
-## That's the wrong link. That's the *top level*, nowhere near the continue link. oops.

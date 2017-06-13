@@ -10,7 +10,7 @@
 
 use DateTime;
 
-my ($user_begin, $user_end, $subreddit, $username);
+my ($user_begin, $user_end, $subreddit, $username, $keywords);
 
 my $config_file = "scraper_config.txt";
 
@@ -36,6 +36,8 @@ unless (-e $config_file) {
     print "Enter a username (default none): /u/";
     $username = <STDIN>;
 
+    print "Enter a string (default none): ";
+    $keywords = <STDIN>;
 }
 
 #Process the config file
@@ -46,7 +48,7 @@ if (-e $config_file) {
 	my @pieces = split(":", $line);
 	push @data, pop @pieces;
     }
-    ($user_begin, $user_end, $subreddit, $username) = @data;
+    ($user_begin, $user_end, $subreddit, $username, $keywords) = @data;
 }
 
 chomp ($user_begin, $user_end, $subreddit, $username);
@@ -146,4 +148,4 @@ while ($cnt < $TOTAL_PERIODS) {
 }
 
 # Now that we've finished, pull down the actual comment threads using another script.
-exec("perl pull_comment_threads.pl $subreddit $username");
+exec("perl pull_comment_threads.pl $subreddit $username $keywords");
