@@ -16,4 +16,12 @@ A small example is provided over a 10 day period. It will take a while to downlo
 
 ----
 
+Todo:
+1) Allow blank username (i.e. just a keyword search).
+2) Use a whole string, not just a keyword.
+3) Nicer interface.
+
+----
+
 See http://zapwai.net/dorfman/ for a specific application.
+
