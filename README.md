@@ -18,14 +18,15 @@ or if you've already pulled the threads down,
 This will wget all threads, one day at a time, from the subreddit.
 A small example is provided over a 10 day period. It will take a while to download the threads if you use a larger time period or a popular subreddit.
 A blank username will search all comments for a string.
-(A blank string will output all comments by the username.)
+A blank string will output all comments by the username.
 
 ----
 
 Todo:
-1) Fix format of blank username result. (Does not yet display the author of each comment. Could be nice to filter submission by author, but reddit already does this.)
+1) Allow multiple keywords.
 2) Allow multiple subreddits.
 3) Allow multiple usernames (both in the thread or saying the string).
+4) UTF8 support (currently says 'Wide character' for special characters.)
 
 ----
 

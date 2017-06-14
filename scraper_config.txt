@@ -1,8 +1,9 @@
 startdate(mmddyy):010113
 enddate(mmddyy):011213
 subreddit:Buddhism
-username:
-string:
+username:michael_dorfman
+string:teacher
+print_comments:yes
 # Do not remove a line. Do not change the order of these lines.
 # String search is not case sensitive. (See search.pl for details.)
 # Dates are *inclusive* and use midnight as the time. (i.e. enddate 01/12 will actually use midnight of 01/13.)

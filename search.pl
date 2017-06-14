@@ -10,9 +10,10 @@
 ## find each occurrence of =~ /$string/i
 ## and remove the letter i.
 
-## Currently inefficient. Creates two hashes for no real reason.
+## Currently inefficient.
+## For instance, Creates two sets of hashes for no real reason.
+## Also many double-checks on existence of $username and $string.
 
-#use warnings;
 use DateTime;
 use JSON;
 
@@ -23,7 +24,7 @@ if (!-e $config_file) {
     exit;
 }
 
-my ($user_begin, $user_end, $subreddit, $username, $string);
+my ($user_begin, $user_end, $subreddit, $username, $string, $print_option);
 
 if (-e $config_file) {
     open (FH, "<", $config_file);
@@ -32,10 +33,10 @@ if (-e $config_file) {
 	my @pieces = split(":", $line);
 	push @data, pop @pieces;
     }
-    ($user_begin, $user_end, $subreddit, $username, $string) = @data;
+    ($user_begin, $user_end, $subreddit, $username, $string, $print_option) = @data;
 }
 
-chomp ($user_begin, $user_end, $subreddit, $username, $string);
+chomp ($user_begin, $user_end, $subreddit, $username, $string, $print_option);
 
 sub get_edates {
     my ($user_begin, $user_end) = (shift, shift);
@@ -71,7 +72,7 @@ sub get_edates {
     my $dt_end = DateTime->new(
 	year => $end_year,
 	month => $end_month,
-	day => $end_day+1, # May as well include this last day, not stop at midnight.
+	day => $end_day+1,	# include the last day itself.
 	hour => 0,
 	minute => 0,
 	second => 0,
@@ -91,7 +92,10 @@ if ($end_edate < $begin_edate) {
 # Remove beginning or ending spaces.
 $username =~ s/^\s+|\s+$//g;
 $subreddit =~ s/^\s+|\s+$//g;
+$print_option =~ s/^\s+|\s+$//g;
 # $string may purposely have spaces.
+
+$print_option = substr (uc ($print_option), 0, 1);
 
 print "Config file supplied the following: \n";
 print "startdate:".$user_begin."\n";
@@ -99,6 +103,7 @@ print "enddate:".$user_end."\n";
 print "subreddit:".$subreddit."\n";
 print "username:".$username."\n";
 print "string:".$string."\n";
+print "print_comments:".$print_option."\n";
 
 if (!-e $subreddit) {
     print "The folder $subreddit does not appear to exist...\n";
@@ -125,7 +130,7 @@ if (length $string and !length $username) {
 # For some context check out a .json file, perhaps try the jq command. e.g.
 # jq "." Buddhism/Extended_JSON_Comments/15sk1n-c7r0v33.json | grep replies -C 5
 
-our $link;	 # permalink to the thread itself.
+my $link;	 # permalink to the thread itself.
 my %submit_link; # Submitted links by $username (key is edate of submission)
 my %comment_link; # Commented links by $username (key is edate of comment)
 
@@ -156,17 +161,18 @@ THRD: foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
 	$link = "https://www.reddit.com".$listy->{data}->{permalink};
 	my $edate = $listy->{data}->{created_utc};
 	if ($edate < $begin_edate or $edate > $end_edate) {
-	    next THRD;		# If wrong date I want the next $Thread.
+	    next THRD;	      # If wrong date I want the next $Thread.
 	}
 	if (!length($string) and !length($username)) {
 	    $submit_link{$edate} = $link;
+	    next THRD;
 	}
 	my $author = $listy->{data}->{author};
 	unless (!length $username) {
 	    if (is_username($author)) {
 		## {id} in header JSON (in content JSON it's under {link_id})
 		# my $id = $listy->{data}->{id}; 
-		my $title = $listy->{data}->{title};
+		# my $title = $listy->{data}->{title};
 		$submit_link{$edate} = $link;
 	    }
 	}
@@ -190,9 +196,10 @@ THRD: foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
 			$string_comment_content{$edate} = $comment;
 		    }
 		}
+		$comment_link{$edate} = $new_link;
+		$comment_content{$edate} = $comment;
 	    }
-	    $comment_link{$edate} = $new_link;
-	    $comment_content{$edate} = $comment;
+	    
 	}
 	# Just check for the string, if there is no username.
 	if (!length $username) {
@@ -200,6 +207,7 @@ THRD: foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
 		if ($comment =~ /$string/i) {
 		    $string_comment_link{$edate} = $new_link;
 		    $string_comment_content{$edate} = $comment;
+		    $string_comment_author{$edate} = $author;
 		}
 	    }
 	}
@@ -223,7 +231,7 @@ if (!(scalar keys %submit_link)) {
 print "\n";
 
 foreach (sort keys %submit_link) {
-    print "---"x10,"\n";
+#    print "---"x10,"\n";
     print "$_: ",$submit_link{$_};
     print "\n";
 }
@@ -234,15 +242,17 @@ if (!length $string) {
 	print "All comments";
     }
     unless (!length $username) {
-	print "by /u/$username: ";
+	print " by /u/$username: ";
     }
     print "\n";
     foreach (sort keys %comment_link) {
-	print "---"x10,"\n";
+#	print "---"x10,"\n";
 	print "$_: ",$comment_link{$_};
-	print "\n\n";
-	print $comment_content{$_};
-	print "\n\n";
+	print "\n";
+	unless ($print_option eq "N"){
+	    print $comment_content{$_};
+	    print "\n";
+	}
     }
 }
 ## If a search string was supplied to $string, print the string hash.
@@ -253,11 +263,16 @@ elsif (length $string) {
     }
     print "containing the string \"$string\": \n";
     foreach (sort keys %string_comment_link) {
-	print "---"x10,"\n";
+#	print "---"x10,"\n";
 	print "$_: ",$string_comment_link{$_};
-	print "\n\n";
-	print $string_comment_content{$_};
-	print "\n\n";
+	print "\n";
+	unless ($print_option eq "N"){
+	    print $string_comment_content{$_};
+	    print "\n";
+	}
+	if (!length $username) {
+	    print "\t--".$string_comment_author{$_}."\n";
+	}
     }
 }
 
@@ -276,7 +291,7 @@ sub traverse_replies {
 	my $edate = $_->{data}->{created_utc};
 	my $new_link = $link.$_->{data}->{id};
 	my $comment = $_->{data}->{body};
-
+	my $author = $_->{data}->{author};
 	unless ($_->{kind} eq "more") {
 	    unless (!length $username) {
 		if ( is_username($_->{data}->{author}) ) {
@@ -297,12 +312,13 @@ sub traverse_replies {
 		    if ($comment =~ /$string/i) {
 			$string_comment_link{$edate} = $new_link;
 			$string_comment_content{$edate} = $comment;
+			$string_comment_author{$edate} = $author;
 		    }
 		}
 	    }
 	}
 	# The value of {replies} is "" when there are no replies.
-	if (!$_->{data}->{replies}) {
+	if (!length $_->{data}->{replies}) {
 	    next;
 	} else {
 	    my $next_hash_ref = $_->{data}->{replies};
