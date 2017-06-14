@@ -1,17 +1,35 @@
 #!/usr/bin/perl
 
-## Usage: search_username.pl subreddit username string
+## Requires config file.
 ## This will search each comment thread in the subreddit folder,
 ## and produce two hashes of links, one for submissions, one for comments,
 ## containing all occurrences where $username is the author.
 
-## Currently very inefficient. Creates two hashes for no real reason.
+## Currently inefficient. Creates two hashes for no real reason.
 
 #use warnings;
 #use strict;
 use JSON;
 
-my ($subreddit, $username, $keywords) = (shift, shift, shift);
+my $config_file = "scraper_config.txt";
+if (!-e $config_file) {
+    print "No configuration file, halt.\n";
+    exit;
+}
+
+my ($user_begin, $user_end, $subreddit, $username, $keywords);
+
+if (-e $config_file) {
+    open (FH, "<", $config_file);
+    my @data;
+    while (my $line = <FH>){
+	my @pieces = split(":", $line);
+	push @data, pop @pieces;
+    }
+    ($user_begin, $user_end, $subreddit, $username, $keywords) = @data;
+}
+
+chomp ($user_begin, $user_end, $subreddit, $username, $keywords);
 
 unless (!$keywords) {
     print "\nI will return only the threads in the $subreddit folder by /u/$username containing the string:$keywords.\n";

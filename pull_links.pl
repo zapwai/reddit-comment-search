@@ -51,7 +51,7 @@ if (-e $config_file) {
     ($user_begin, $user_end, $subreddit, $username, $keywords) = @data;
 }
 
-chomp ($user_begin, $user_end, $subreddit, $username);
+chomp ($user_begin, $user_end, $subreddit, $username, $keywords);
 
 my @begin_nums = split "", $user_begin;
 my @end_nums = split "", $user_end;
@@ -148,4 +148,4 @@ while ($cnt < $TOTAL_PERIODS) {
 }
 
 # Now that we've finished, pull down the actual comment threads using another script.
-exec("perl pull_comment_threads.pl $subreddit $username $keywords");
+exec("perl pull_comment_threads.pl $subreddit $username");
