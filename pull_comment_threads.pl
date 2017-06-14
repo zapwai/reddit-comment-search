@@ -1,5 +1,6 @@
 #!/usr/bin/perl
-# This script takes $subreddit as an argument. That directory will already exist if called from pull_links.pl
+# This script takes $subreddit as an argument.
+# (That directory will already exist if this is called from pull_links.pl)
 #
 # This script searches each listing in the LINKS directory and uses wget to grab each actual comment thread.
 # It saves these as .json files in Extended_JSON_Comments.
@@ -8,13 +9,8 @@
 ## An example of using the awesome command-line program jq:
 ## cat 008ny.json | jq ".[0].data.children[0].data.name"
 
-# May as well use no-clobber mode, adding -nc to the wget, so it doesn't waste bandwidth.
+# Despite manually checking for existence of the file, we use no-clobber mode, adding -nc to the wget, so it doesn't waste bandwidth.
 
-# Do not search for parent_id, it's buggy.
-# use id when you find the "more" listings.
-
-#use strict;
-#use warnings;
 use JSON;
 
 my $subreddit = shift;
@@ -161,4 +157,4 @@ foreach my $file (@files) {
     }
 }
 
-exec("perl search_username.pl");
+exec("perl search.pl");

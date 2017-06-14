@@ -8,6 +8,8 @@ Uses perl with the DateTime and JSON libraries.
 Usage:
 1) Edit the config file,
 2) Type "perl pull_links.pl" in the terminal.
+or if you've already pulled the threads down,
+2) Type "perl search.pl" in the terminal.
 
 ----
 
@@ -20,6 +22,9 @@ A blank username will search all comments for a string.
 
 Todo:
 1) Fix format of blank username result (does not display the author of each comment).
+2) Allow multiple subreddits.
+3) Allow multiple usernames (both in the thread or saying the string).
+4) Bug: The start and end dates are only used when downloading links, not during a search!
 
 ----
 

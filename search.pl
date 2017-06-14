@@ -7,7 +7,7 @@
 
 ## Currently inefficient. Creates two hashes for no real reason.
 
-#use warnings;
+use warnings;
 #use strict;
 use JSON;
 
@@ -18,7 +18,7 @@ if (!-e $config_file) {
     exit;
 }
 
-my ($user_begin, $user_end, $subreddit, $username, $keywords);
+my ($user_begin, $user_end, $subreddit, $username, $string);
 
 if (-e $config_file) {
     open (FH, "<", $config_file);
@@ -27,18 +27,37 @@ if (-e $config_file) {
 	my @pieces = split(":", $line);
 	push @data, pop @pieces;
     }
-    ($user_begin, $user_end, $subreddit, $username, $keywords) = @data;
+    ($user_begin, $user_end, $subreddit, $username, $string) = @data;
 }
 
-chomp ($user_begin, $user_end, $subreddit, $username, $keywords);
+chomp ($user_begin, $user_end, $subreddit, $username, $string);
 
-print $subreddit."\n".$username."\n".$keywords."\n";
-# TEsting
-unless (!$keywords) {
-    print "\nI will return only the threads in the $subreddit folder by /u/$username containing the string:$keywords.\n";
+# Remove beginning or ending spaces.
+$username =~ s/^\s+|\s+$//g;
+$subreddit =~ s/^\s+|\s+$//g;
+# $string may purposely have spaces.
+
+print "Config file supplied the following: \n";
+print "startdate:".$user_begin."\n";
+print "enddate:".$user_end."\n";
+print "subreddit:".$subreddit."\n";
+print "username:".$username."\n";
+print "string:".$string."\n";
+
+if (!-e $subreddit) {
+    print "The folder $subreddit does not appear to exist...\n";
+    print "(Have you run the pull_links.pl script?)\n";
+    exit;
 }
-if (!$keywords) {
+
+unless (!length($string) or !length $username) {
+    print "\nI will return threads from the $subreddit folder in which /u/$username said the string:$string.\n";
+}
+if (!length $string and length $username) {
     print "\nA general search for /u/$username in the $subreddit folder.\n";
+}
+if (length $string and !length $username) {
+    print "\nA general search for the string $string in the $subreddit folder.\n";
 }
 
 # Reddit thread JSONs are two merged together. e.g. [{},{}]
@@ -52,15 +71,17 @@ my %comment_link; # Commented links by $username (key is edate of comment)
 
 my %comment_content; # The body of the comments. (key is edate of comment)
 
-### In the event that a string was supplied in $keywords, we use these:
-my %keyword_comment_link;
-my %keyword_comment_content;
+# In the event that a string was supplied in $string, we use these:
+my %string_comment_link;
+my %string_comment_content;
 
 #my $cnt=0; 			# testing, remove
 #my $limit=10;			# testing, remove
 foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
     #    last if ($cnt == $limit);	# testing remove
-    open (my $FILE, $Thread) or die("Thread $Thread cannot be opened.\n$!\n");
+    #    $cnt++;			# testing, remove
+    open (my $FILE, $Thread)
+	or die("Thread $Thread cannot be opened.\n$!\n");
     my $row = <$FILE>;
     close $FILE;
     # I want the location of the  second  occurance of the word "Listing".
@@ -70,7 +91,6 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
     my $EndPt = index( $BrokenRow, 'Listing' ) + 4;
     my $FirstJSON= substr ( $row, 1 , ($EndPt - 3) ); 
     my $SecondJSON = substr ( $row, $EndPt , -1);
-    #    $cnt++;			# testing, remove
 
     $FirstJSON = decode_json($FirstJSON);
     $SecondJSON = decode_json($SecondJSON);
@@ -101,22 +121,22 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
 	unless ($username eq "") {
 	    if (is_username($author)) {
 		# Search for the string, if one was supplied.
-		unless (!$keywords) {
-		    if ($comment =~ /$keywords/) {
-			$keyword_comment_link{$edate} = $new_link;
-			$keyword_comment_content{$edate} = $comment;
+		unless (!length $string) {
+		    if ($comment =~ /$string/) {
+			$string_comment_link{$edate} = $new_link;
+			$string_comment_content{$edate} = $comment;
 		    }
 		}
 	    }
 	    $comment_link{$edate} = $new_link;
 	    $comment_content{$edate} = $comment;
 	}
-	# Just check the keywords, if there is no username.
+	# Just check for the string, if there is no username.
 	if ($username eq "") {
-	    unless (!$keywords) {
-		if ($comment =~ /$keywords/) {
-		    $keyword_comment_link{$edate} = $new_link;
-		    $keyword_comment_content{$edate} = $comment;
+	    unless (!length $string) {
+		if ($comment =~ /$string/) {
+		    $string_comment_link{$edate} = $new_link;
+		    $string_comment_content{$edate} = $comment;
 		}
 	    }
 	}
@@ -130,17 +150,28 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
 
 ## We always print submissions.
 print "\n";
-print "Submissions by /u/$username: \n";
+print "Submissions";
+unless (!length $username) {
+    print "by /u/$username: ";
+}
+if (!(scalar keys %submit_link)) {
+    print " (none)";
+}
+print "\n";
+
 foreach (sort keys %submit_link) {
     print "---"x10,"\n";
     print "$_: ",$submit_link{$_};
     print "\n";
 }
 
-
-## If no keyword was supplied, print all comments by given username.
-if (!$keywords) {
-    print "Comments by /u/$username: \n";
+## If no string was supplied, print all comments by given username.
+if (!length $string) {
+    print "All comments";
+    unless (!length $username) {
+	print "by /u/$username: ";
+    }
+    print "\n";
     foreach (sort keys %comment_link) {
 	print "---"x10,"\n";
 	print "$_: ",$comment_link{$_};
@@ -149,14 +180,18 @@ if (!$keywords) {
 	print "\n\n";
     }
 }
-## If a search string was supplied to $keywords, print the other hash.
-elsif ($keywords) {
-    print "Comments by /u/$username containing $keywords: \n";
-    foreach (sort keys %keyword_comment_link) {
+## If a search string was supplied to $string, print the other hash.
+elsif ($string) {
+    print "Comments ";
+    unless (!length $username) {
+	print "by /u/$username ";
+    }
+    print "containing the string \"$string\": \n";
+    foreach (sort keys %string_comment_link) {
 	print "---"x10,"\n";
-	print "$_: ",$keyword_comment_link{$_};
+	print "$_: ",$string_comment_link{$_};
 	print "\n\n";
-	print $keyword_comment_content{$_};
+	print $string_comment_content{$_};
 	print "\n\n";
     }
 }
@@ -178,30 +213,31 @@ sub traverse_replies {
 	my $comment = $_->{data}->{body};
 
 	unless ($_->{kind} eq "more") {
-	    unless ($username eq "") {
+	    unless (!length $username) {
 		if ( is_username($_->{data}->{author}) ) {
 		    $comment_link{$edate} = $new_link;
 		    $comment_content{$edate} = $comment;
 		    # Search for the string, if it was supplied.
-		    unless (!$keywords) {
-			if ($comment =~ /$keywords/) {
-			    $keyword_comment_link{$edate} = $new_link;
-			    $keyword_comment_content{$edate} = $comment;
+		    unless (!length $string) {
+			if ($comment =~ /$string/) {
+			    $string_comment_link{$edate} = $new_link;
+			    $string_comment_content{$edate} = $comment;
 			}
 		    }
 		}
 	    }
-	    # Just check the keywords, if there is no username.
-	    if ($username eq "") {
-		unless (!$keywords) {
-		    if ($comment =~ /$keywords/) {
-			$keyword_comment_link{$edate} = $new_link;
-			$keyword_comment_content{$edate} = $comment;
+	    # Just check for the string, if there is no username.
+	    if (!length $username) {
+		unless (!length $string) {
+		    if ($comment =~ /$string/) {
+			$string_comment_link{$edate} = $new_link;
+			$string_comment_content{$edate} = $comment;
 		    }
 		}
 	    }
 	}
-	if ($_->{data}->{replies} eq "") {
+	# The value of {replies} is "" when there are no replies.
+	if (!$_->{data}->{replies}) {
 	    next;
 	} else {
 	    my $next_hash_ref = $_->{data}->{replies};

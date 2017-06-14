@@ -10,7 +10,7 @@
 
 use DateTime;
 
-my ($user_begin, $user_end, $subreddit, $username, $keywords);
+my ($user_begin, $user_end, $subreddit, $username, $string);
 
 my $config_file = "scraper_config.txt";
 
@@ -22,25 +22,17 @@ unless (-e $config_file) {
     print "Enter end date (mmddyy): ";
     $user_end = <STDIN>;
 
-    # Testing the format of input dates.
-    if ($user_begin =~ m/[^\d]/ or $user_end =~ m/[^\d]/) {
-	print "Non-numeric character encountered.\n"; exit;
-    }
-    if (length($user_begin) != 6 or length($user_end) != 6) {
-	print "Wrong date length encountered.\n"; exit;
-    }
-
-    print "Enter subreddit (default all): ";
+    print "Enter subreddit (default all): /r/";
     $subreddit = <STDIN>;
 
     print "Enter a username (default none): /u/";
     $username = <STDIN>;
 
     print "Enter a string (default none): ";
-    $keywords = <STDIN>;
+    $string = <STDIN>;
 
     open (my $FH, ">", $config_file);
-    print $FH "startdate(mmddyy):".$user_begin."\n"."enddate(mmddyy):".$user_end."\n"."subreddit:".$subreddit."\n"."username:".$username."\n"."keyword".$keywords."\n";
+    print $FH "startdate(mmddyy):".$user_begin."\n"."enddate(mmddyy):".$user_end."\n"."subreddit:".$subreddit."\n"."username:".$username."\n"."string:".$string."\n";
     close $FH;
 }
 
@@ -52,10 +44,18 @@ if (-e $config_file) {
 	my @pieces = split(":", $line);
 	push @data, pop @pieces;
     }
-    ($user_begin, $user_end, $subreddit, $username, $keywords) = @data;
+    ($user_begin, $user_end, $subreddit, $username, $string) = @data;
 }
 
-chomp ($user_begin, $user_end, $subreddit, $username, $keywords);
+chomp ($user_begin, $user_end, $subreddit, $username, $string);
+
+# Testing the format of input dates.
+if ($user_begin =~ m/[^\d]/ or $user_end =~ m/[^\d]/) {
+    print "Non-numeric character encountered in date.\n"; exit;
+}
+if (length($user_begin) != 6 or length($user_end) != 6) {
+    print "Wrong date length encountered.\n"; exit;
+}
 
 my @begin_nums = split "", $user_begin;
 my @end_nums = split "", $user_end;
@@ -87,6 +87,12 @@ my $dt_end = DateTime->new(
     second => 0,
 );
 my $end_edate = $dt_end->epoch;
+
+if ($end_edate < $begin_edate) {
+    print "You want time to move backwards?\n";
+    print "I don't think the date $user_begin comes before $user_end...\n";
+    exit;
+}
 
 my $ONE_DAY = 86400;
 #my $ONE_WEEK = $ONE_DAY*7;	# Was initially used for fewer files.
@@ -130,8 +136,8 @@ my $dir = "./".$subreddit."/LINKS";
 unless(-e $dir or mkdir $dir) {
     die "Unable to create directory $dir\n $! \n";
 }
-
-my $cnt=0;		      # Repeat until all downloads successful.
+# Repeat until all downloads successful.
+my $cnt=0;		      
 while ($cnt < $TOTAL_PERIODS) {	
     $cnt=0;
     my $START_TIME = $BEGIN; 
@@ -152,4 +158,4 @@ while ($cnt < $TOTAL_PERIODS) {
 }
 
 # Now that we've finished, pull down the actual comment threads using another script.
-exec("perl pull_comment_threads.pl $subreddit $username");
+exec("perl pull_comment_threads.pl $subreddit");
