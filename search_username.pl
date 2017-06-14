@@ -14,6 +14,7 @@ use JSON;
 my $config_file = "scraper_config.txt";
 if (!-e $config_file) {
     print "No configuration file, halt.\n";
+    print "Please run pull_links.pl first.\n";
     exit;
 }
 
