@@ -23,7 +23,7 @@ my ($user_begin, $user_end, $subreddit, $username, $keywords);
 if (-e $config_file) {
     open (FH, "<", $config_file);
     my @data;
-    while (my $line = <FH>){
+    while (my $line = <FH>) {
 	my @pieces = split(":", $line);
 	push @data, pop @pieces;
     }
@@ -32,6 +32,8 @@ if (-e $config_file) {
 
 chomp ($user_begin, $user_end, $subreddit, $username, $keywords);
 
+print $subreddit."\n".$username."\n".$keywords."\n";
+# TEsting
 unless (!$keywords) {
     print "\nI will return only the threads in the $subreddit folder by /u/$username containing the string:$keywords.\n";
 }
@@ -57,7 +59,7 @@ my %keyword_comment_content;
 #my $cnt=0; 			# testing, remove
 #my $limit=10;			# testing, remove
 foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
-#    last if ($cnt == $limit);	# testing remove
+    #    last if ($cnt == $limit);	# testing remove
     open (my $FILE, $Thread) or die("Thread $Thread cannot be opened.\n$!\n");
     my $row = <$FILE>;
     close $FILE;
@@ -68,22 +70,22 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
     my $EndPt = index( $BrokenRow, 'Listing' ) + 4;
     my $FirstJSON= substr ( $row, 1 , ($EndPt - 3) ); 
     my $SecondJSON = substr ( $row, $EndPt , -1);
-#    $cnt++;			# testing, remove
+    #    $cnt++;			# testing, remove
 
     $FirstJSON = decode_json($FirstJSON);
     $SecondJSON = decode_json($SecondJSON);
 
     for my $listy ( @{$FirstJSON->{data}->{children}} ) {
 	my $author = $listy->{data}->{author};
-
+	my $edate = $listy->{data}->{created_utc};
 	$link = "https://www.reddit.com".$listy->{data}->{permalink};
-	
-	if (is_username($author)) {
-	    my $edate = $listy->{data}->{created_utc};
-	    # {id} in header JSON (in content JSON it's under {link_id}).
-	    #	    my $id = $listy->{data}->{id}; 
-	    my $title = $listy->{data}->{title};
-	    $submit_link{$edate} = $link;
+	unless ($username eq "") {
+	    if (is_username($author)) {
+		## {id} in header JSON (in content JSON it's under {link_id})
+		# my $id = $listy->{data}->{id}; 
+		my $title = $listy->{data}->{title};
+		$submit_link{$edate} = $link;
+	    }
 	}
     }
 
@@ -92,22 +94,31 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
 	$id = substr($id,3);
 	
 	my $author = $contenty->{data}->{author};
-	
-	if (is_username($author)) {
-	    my $edate = $contenty->{data}->{created_utc}; 
-	    my $new_link = $link.$contenty->{data}->{id};
+	my $edate = $contenty->{data}->{created_utc}; 
+	my $new_link = $link.$contenty->{data}->{id};
+	my $comment = $contenty->{data}->{body};
 
-	    my $comment = $contenty->{data}->{body};
-	    # Search for the string, if one was supplied.
+	unless ($username eq "") {
+	    if (is_username($author)) {
+		# Search for the string, if one was supplied.
+		unless (!$keywords) {
+		    if ($comment =~ /$keywords/) {
+			$keyword_comment_link{$edate} = $new_link;
+			$keyword_comment_content{$edate} = $comment;
+		    }
+		}
+	    }
+	    $comment_link{$edate} = $new_link;
+	    $comment_content{$edate} = $comment;
+	}
+	# Just check the keywords, if there is no username.
+	if ($username eq "") {
 	    unless (!$keywords) {
 		if ($comment =~ /$keywords/) {
 		    $keyword_comment_link{$edate} = $new_link;
 		    $keyword_comment_content{$edate} = $comment;
 		}
 	    }
-	    
-	    $comment_link{$edate} = $new_link;
-	    $comment_content{$edate} = $comment;
 	}
 	# If no reply we are done. Otherwise traverse the replies.
 	unless ($contenty->{data}->{replies} eq "") { 
@@ -161,15 +172,27 @@ sub is_username {
 sub traverse_replies {
     my $hash_ref_to_replies = shift;
     for ( @{$hash_ref_to_replies->{data}->{children}} ) {
-	# The "continue this thread" links.
-	unless ($_->{kind} eq "more") { 
-	    if ( is_username($_->{data}->{author}) ) {
-		my $edate = $_->{data}->{created_utc};
-		my $new_link = $link.$_->{data}->{id};
-		my $comment = $_->{data}->{body};
-		$comment_link{$edate} = $new_link;
-		$comment_content{$edate} = $comment;
-		# Search for the string, if it was supplied.
+
+	my $edate = $_->{data}->{created_utc};
+	my $new_link = $link.$_->{data}->{id};
+	my $comment = $_->{data}->{body};
+
+	unless ($_->{kind} eq "more") {
+	    unless ($username eq "") {
+		if ( is_username($_->{data}->{author}) ) {
+		    $comment_link{$edate} = $new_link;
+		    $comment_content{$edate} = $comment;
+		    # Search for the string, if it was supplied.
+		    unless (!$keywords) {
+			if ($comment =~ /$keywords/) {
+			    $keyword_comment_link{$edate} = $new_link;
+			    $keyword_comment_content{$edate} = $comment;
+			}
+		    }
+		}
+	    }
+	    # Just check the keywords, if there is no username.
+	    if ($username eq "") {
 		unless (!$keywords) {
 		    if ($comment =~ /$keywords/) {
 			$keyword_comment_link{$edate} = $new_link;
@@ -177,12 +200,12 @@ sub traverse_replies {
 		    }
 		}
 	    }
-	    if ($_->{data}->{replies} eq "") {
-		next;
-	    } else {
-		my $next_hash_ref = $_->{data}->{replies};
-		traverse_replies($next_hash_ref);
-	    }
+	}
+	if ($_->{data}->{replies} eq "") {
+	    next;
+	} else {
+	    my $next_hash_ref = $_->{data}->{replies};
+	    traverse_replies($next_hash_ref);
 	}
     }
 }
