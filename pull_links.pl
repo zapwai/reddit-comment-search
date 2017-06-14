@@ -38,13 +38,17 @@ unless (-e $config_file) {
 
     print "Enter a string (default none): ";
     $keywords = <STDIN>;
+
+    open (my $FH, ">", $config_file);
+    print $FH "startdate(mmddyy):".$user_begin."\n"."enddate(mmddyy):".$user_end."\n"."subreddit:".$subreddit."\n"."username:".$username."\n"."keyword".$keywords."\n";
+    close $FH;
 }
 
 #Process the config file
 if (-e $config_file) {
     open (FH, "<", $config_file);
     my @data;
-    while (my $line = <FH>){
+    while (my $line = <FH>) {
 	my @pieces = split(":", $line);
 	push @data, pop @pieces;
     }

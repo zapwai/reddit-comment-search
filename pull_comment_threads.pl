@@ -108,7 +108,7 @@ my $addy;
 
 my @files = <"$dir/*">;
 foreach my $file (@files) {
-    print "\n $file \n\n";
+    print "$file \n";
     open (FH, $file);
     my $str = <FH>;
     close FH;
