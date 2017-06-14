@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 # Copyright 2017 David Ferrone
+#
 # This script takes $subreddit as an argument.
 # (That directory will already exist if this is called from pull_links.pl)
 #

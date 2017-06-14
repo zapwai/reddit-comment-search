@@ -6,9 +6,6 @@
 #user is prompted for start and end dates, as well as the subreddit name.
 #these are convered to epoch dates, the number of days counted, and links for each DAY are pulled.
 
-#use strict;
-#use warnings;
-
 use DateTime;
 
 my ($user_begin, $user_end, $subreddit, $username, $string);
@@ -33,7 +30,7 @@ unless (-e $config_file) {
     $string = <STDIN>;
 
     open (my $FH, ">", $config_file);
-    print $FH "startdate(mmddyy):".$user_begin."\n"."enddate(mmddyy):".$user_end."\n"."subreddit:".$subreddit."\n"."username:".$username."\n"."string:".$string."\n";
+    print $FH "startdate(mmddyy):".$user_begin."enddate(mmddyy):".$user_end."subreddit:".$subreddit."username:".$username."string:".$string;
     close $FH;
 }
 

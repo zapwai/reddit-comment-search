@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 # Copyright 2017 David Ferrone
+#
 ## Requires config file.
 ## This will search each comment thread in the subreddit folder,
 ## and produce two hashes of links, one for submissions, one for comments,
@@ -8,12 +9,12 @@
 ## Currently inefficient. Creates two hashes for no real reason.
 
 use warnings;
-#use strict;
+use strict;
 use JSON;
 
 my $config_file = "scraper_config.txt";
 if (!-e $config_file) {
-    print "No configuration file, halt.\n";
+    print "No configuration file, sorry, must halt.\n";
     print "Please run pull_links.pl first.\n";
     exit;
 }
