@@ -23,10 +23,9 @@ A blank username will search all comments for a string.
 ----
 
 Todo:
-1) Fix format of blank username result (does not display the author of each comment).
+1) Fix format of blank username result. (Does not yet display the author of each comment. Could be nice to filter submission by author, but reddit already does this.)
 2) Allow multiple subreddits.
 3) Allow multiple usernames (both in the thread or saying the string).
-4) Bug: The start and end dates are only used when downloading links, not during a search!
 
 ----
 

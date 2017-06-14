@@ -1,15 +1,19 @@
 #!/usr/bin/perl
 # Copyright 2017 David Ferrone
 #
-## Requires config file.
+## Requires scraper_config.txt file.
 ## This will search each comment thread in the subreddit folder,
-## and produce two hashes of links, one for submissions, one for comments,
+## and produce hashes of links, one for submissions, one for comments,
 ## containing all occurrences where $username is the author.
+
+## If you desire a case sensitive search
+## find each occurrence of =~ /$string/i
+## and remove the letter i.
 
 ## Currently inefficient. Creates two hashes for no real reason.
 
-use warnings;
-use strict;
+#use warnings;
+use DateTime;
 use JSON;
 
 my $config_file = "scraper_config.txt";
@@ -33,6 +37,57 @@ if (-e $config_file) {
 
 chomp ($user_begin, $user_end, $subreddit, $username, $string);
 
+sub get_edates {
+    my ($user_begin, $user_end) = (shift, shift);
+    # Testing the format of input dates.
+    if ($user_begin =~ m/[^\d]/ or $user_end =~ m/[^\d]/) {
+	print "Non-numeric character encountered in date.\n"; exit;
+    }
+    if (length($user_begin) != 6 or length($user_end) != 6) {
+	print "Wrong date length encountered.\n"; exit;
+    }
+
+    my @begin_nums = split "", $user_begin;
+    my @end_nums = split "", $user_end;
+
+    my $begin_day = $begin_nums[2].$begin_nums[3];
+    my $begin_month = $begin_nums[0].$begin_nums[1];
+    my $begin_year = "20".$begin_nums[4].$begin_nums[5];
+
+    my $dt_begin = DateTime->new(
+	year => $begin_year,
+	month => $begin_month,
+	day => $begin_day,
+	hour => 0,
+	minute => 0,
+	second => 0, 
+    );
+    my $begin_edate = $dt_begin->epoch;
+
+    my $end_day = $end_nums[2].$end_nums[3];
+    my $end_month = $end_nums[0].$end_nums[1];
+    my $end_year = "20".$end_nums[4].$end_nums[5];
+
+    my $dt_end = DateTime->new(
+	year => $end_year,
+	month => $end_month,
+	day => $end_day+1, # May as well include this last day, not stop at midnight.
+	hour => 0,
+	minute => 0,
+	second => 0,
+    );
+    my $end_edate = $dt_end->epoch;
+    return ($begin_edate, $end_edate);
+}
+
+my ($begin_edate, $end_edate) = get_edates($user_begin, $user_end);
+
+if ($end_edate < $begin_edate) {
+    print "You want time to move backwards?\n";
+    print "I don't think the date $user_begin comes before $user_end...\n";
+    exit;
+}
+
 # Remove beginning or ending spaces.
 $username =~ s/^\s+|\s+$//g;
 $subreddit =~ s/^\s+|\s+$//g;
@@ -51,6 +106,10 @@ if (!-e $subreddit) {
     exit;
 }
 
+if (!length($string) and !length($username)) {
+    print "(No username and no string will simply print all links in your requested timeframe.)\n";
+}
+
 unless (!length($string) or !length $username) {
     print "\nI will return threads from the $subreddit folder in which /u/$username said the string:$string.\n";
 }
@@ -58,7 +117,7 @@ if (!length $string and length $username) {
     print "\nA general search for /u/$username in the $subreddit folder.\n";
 }
 if (length $string and !length $username) {
-    print "\nA general search for the string $string in the $subreddit folder.\n";
+    print "\nA general search for the string \"$string\" in the $subreddit folder.\n";
 }
 
 # Reddit thread JSONs are two merged together. e.g. [{},{}]
@@ -75,12 +134,9 @@ my %comment_content; # The body of the comments. (key is edate of comment)
 # In the event that a string was supplied in $string, we use these:
 my %string_comment_link;
 my %string_comment_content;
+my %string_comment_author;
 
-#my $cnt=0; 			# testing, remove
-#my $limit=10;			# testing, remove
-foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
-    #    last if ($cnt == $limit);	# testing remove
-    #    $cnt++;			# testing, remove
+THRD: foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
     open (my $FILE, $Thread)
 	or die("Thread $Thread cannot be opened.\n$!\n");
     my $row = <$FILE>;
@@ -97,10 +153,16 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
     $SecondJSON = decode_json($SecondJSON);
 
     for my $listy ( @{$FirstJSON->{data}->{children}} ) {
-	my $author = $listy->{data}->{author};
-	my $edate = $listy->{data}->{created_utc};
 	$link = "https://www.reddit.com".$listy->{data}->{permalink};
-	unless ($username eq "") {
+	my $edate = $listy->{data}->{created_utc};
+	if ($edate < $begin_edate or $edate > $end_edate) {
+	    next THRD;		# If wrong date I want the next $Thread.
+	}
+	if (!length($string) and !length($username)) {
+	    $submit_link{$edate} = $link;
+	}
+	my $author = $listy->{data}->{author};
+	unless (!length $username) {
 	    if (is_username($author)) {
 		## {id} in header JSON (in content JSON it's under {link_id})
 		# my $id = $listy->{data}->{id}; 
@@ -119,11 +181,11 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
 	my $new_link = $link.$contenty->{data}->{id};
 	my $comment = $contenty->{data}->{body};
 
-	unless ($username eq "") {
+	unless (!length $username) {
 	    if (is_username($author)) {
 		# Search for the string, if one was supplied.
 		unless (!length $string) {
-		    if ($comment =~ /$string/) {
+		    if ($comment =~ /$string/i) {
 			$string_comment_link{$edate} = $new_link;
 			$string_comment_content{$edate} = $comment;
 		    }
@@ -133,16 +195,16 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
 	    $comment_content{$edate} = $comment;
 	}
 	# Just check for the string, if there is no username.
-	if ($username eq "") {
+	if (!length $username) {
 	    unless (!length $string) {
-		if ($comment =~ /$string/) {
+		if ($comment =~ /$string/i) {
 		    $string_comment_link{$edate} = $new_link;
 		    $string_comment_content{$edate} = $comment;
 		}
 	    }
 	}
 	# If no reply we are done. Otherwise traverse the replies.
-	unless ($contenty->{data}->{replies} eq "") { 
+	unless (!length $contenty->{data}->{replies}) { 
 	    my $hash_ref_to_replies = $contenty->{data}->{replies};
 	    traverse_replies($hash_ref_to_replies);
 	}
@@ -153,7 +215,7 @@ foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
 print "\n";
 print "Submissions";
 unless (!length $username) {
-    print "by /u/$username: ";
+    print " by /u/$username: ";
 }
 if (!(scalar keys %submit_link)) {
     print " (none)";
@@ -168,7 +230,9 @@ foreach (sort keys %submit_link) {
 
 ## If no string was supplied, print all comments by given username.
 if (!length $string) {
-    print "All comments";
+    unless (!length $username){
+	print "All comments";
+    }
     unless (!length $username) {
 	print "by /u/$username: ";
     }
@@ -181,8 +245,8 @@ if (!length $string) {
 	print "\n\n";
     }
 }
-## If a search string was supplied to $string, print the other hash.
-elsif ($string) {
+## If a search string was supplied to $string, print the string hash.
+elsif (length $string) {
     print "Comments ";
     unless (!length $username) {
 	print "by /u/$username ";
@@ -220,7 +284,7 @@ sub traverse_replies {
 		    $comment_content{$edate} = $comment;
 		    # Search for the string, if it was supplied.
 		    unless (!length $string) {
-			if ($comment =~ /$string/) {
+			if ($comment =~ /$string/i) {
 			    $string_comment_link{$edate} = $new_link;
 			    $string_comment_content{$edate} = $comment;
 			}
@@ -230,7 +294,7 @@ sub traverse_replies {
 	    # Just check for the string, if there is no username.
 	    if (!length $username) {
 		unless (!length $string) {
-		    if ($comment =~ /$string/) {
+		    if ($comment =~ /$string/i) {
 			$string_comment_link{$edate} = $new_link;
 			$string_comment_content{$edate} = $comment;
 		    }
