@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-
+# Copyright 2017 David Ferrone
 ## Requires config file.
 ## This will search each comment thread in the subreddit folder,
 ## and produce two hashes of links, one for submissions, one for comments,

@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# Copyright 2017 David Ferrone
 ## Pulls LISTINGS of threads between specific dates using reddit's cloudsearch. The timestamp uses epoch dates.
 
 #the subreddit/LINKS folder is created if it does not already exist.
