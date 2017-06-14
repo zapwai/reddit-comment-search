@@ -10,6 +10,7 @@ Usage:
 2) Type "perl pull_links.pl" in the terminal.
 
 or if you've already pulled the threads down,
+
 2) Type "perl search.pl" in the terminal.
 
 ----
