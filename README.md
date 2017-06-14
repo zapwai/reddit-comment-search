@@ -11,9 +11,8 @@ Usage:
 
 This will wget all threads, one day at a time, from the subreddit.
 A small example is provided over a 10 day period. It will take a while to download the threads if you use a larger time period or a popular subreddit.
-
-A blank username will just search all comments for a string.
-(A blank string will just output all comments by the username.)
+A blank username will search all comments for a string.
+(A blank string will output all comments by the username.)
 ----
 
 Todo:
