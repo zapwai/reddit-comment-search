@@ -101,16 +101,33 @@ my %string_comment_author;
 my $Target_dir = "$subreddit/Extended_JSON_Comments";
 my $index_filename = $Target_dir."/_INDEX";
 unless (-e $index_filename) {
+    print "Creating index of dates --> files.\n";
     `perl index_creator.pl $subreddit`;
 }
 my @files_to_open;
+print "Reading index";
 open (my $FILE, "<", $index_filename);
+my $time_counter = 0;
 while (my $line = <$FILE>) {
     chomp($line);
     my @pieces = split("\t", $line);
-    if ($pieces[0] < $begin_edate or $pieces[1] > $end_edate) {
+    if ($pieces[0] < $begin_edate) {
+	if ($time_counter == 0) {
+	    $time_counter++;
+	    print ".";
+	}
+	next;
+    } elsif ($pieces[0] > $end_edate) {
+	if ($time_counter == 2) {
+	    $time_counter++;
+	    print ".";
+	}
 	next;
     } else {
+	if ($time_counter == 1) {
+	    $time_counter++;
+	    print ".";
+	}
 	push @files_to_open, $pieces[1];
     }
 }
