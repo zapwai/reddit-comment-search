@@ -1,5 +1,5 @@
 startdate(mmddyy):010113
-enddate(mmddyy):013013
+enddate(mmddyy):012513
 subreddit:Buddhism
 username:michael_dorfman
 string:faux

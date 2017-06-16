@@ -108,6 +108,7 @@ my @files_to_open;
 print "Reading index";
 open (my $FILE, "<", $index_filename);
 my $time_counter = 0;
+    $| = 1;
 while (my $line = <$FILE>) {
     chomp($line);
     my @pieces = split("\t", $line);
@@ -131,14 +132,17 @@ while (my $line = <$FILE>) {
 	push @files_to_open, $pieces[1];
     }
 }
+print " done.\n";
 close $FILE;
-
+$time_counter=0;
+print "Searching through the Reddit threads";
 THRD: foreach my $Thread (@files_to_open) {
     open (my $FILE, "<", $Thread)
 	or die("Thread $Thread cannot be opened.\n$!\n");
     my $row = <$FILE>;
     close $FILE;
-
+    $time_counter++;
+    print "." if ($time_counter % 100 == 0);
     my ($FirstJSON, $SecondJSON) = split_merged_jsons($row);
     
     $FirstJSON = decode_json($FirstJSON);
@@ -206,31 +210,31 @@ THRD: foreach my $Thread (@files_to_open) {
     }
 }
 
-## We always print submissions.
-print "\n";
-print "Submissions";
-unless (!length $username) {
-    print " by /u/$username: ";
-}
-if (!(scalar keys %submit_link)) {
-    print " (none)";
-}
-print "\n";
-
-foreach (sort keys %submit_link) {
-    #    print "---"x10,"\n";
-    print "$_: ",$submit_link{$_};
+## Print submissions.
+unless (!(scalar keys %submit_link)) {
     print "\n";
-}
-
-## If no string was supplied, print all comments by given username.
-if (!length $string) {
-    unless (!length $username){
-	print "All comments";
-    }
+    print "Submissions";
     unless (!length $username) {
 	print " by /u/$username: ";
     }
+    print "\n";
+    foreach (sort keys %submit_link) {
+	print "$_: ",$submit_link{$_};
+	print "\n";
+    }
+}
+
+print " done.\n";
+
+## If no string was supplied, print all comments by given username.
+if (!length $string) {
+
+    print "All comments";
+
+    unless (!length $username) {
+	print " by /u/$username: ";
+    }
+    
     print "\n";
     foreach (sort keys %comment_link) {
 	#	print "---"x10,"\n";
