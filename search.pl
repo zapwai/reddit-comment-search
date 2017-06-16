@@ -13,6 +13,7 @@
 ## Currently inefficient.
 ## For instance, Creates two sets of hashes for no real reason.
 ## Also many double-checks on existence of $username and $string.
+## The index and checking is unnecessary - reddit ids are ordered alphabetically.
 require "resources.pl";
 use JSON;
 use autodie;
@@ -53,14 +54,16 @@ $print_option =~ s/^\s+|\s+$//g;
 # $string may purposely have spaces.
 
 $print_option = substr (uc ($print_option), 0, 1);
-
-print "Config file supplied the following: \n";
-print "startdate:".$user_begin."\n";
-print "enddate:".$user_end."\n";
-print "subreddit:".$subreddit."\n";
-print "username:".$username."\n";
-print "string:".$string."\n";
-print "print_comments:".$print_option."\n";
+my $config_report = <<"endl";
+ Config file supplied the following:
+ startdate:$user_begin
+ enddate:$user_end
+ subreddit:$subreddit
+ username:$username
+ string:$string
+ print_comments:$print_option
+endl
+print $config_report;
 
 if (!-e $subreddit) {
     print "The folder $subreddit does not appear to exist...\n";
@@ -68,7 +71,7 @@ if (!-e $subreddit) {
     exit;
 }
 
-unless (!length($string) or !length $username) {
+unless (!length($string) or !length($username)) {
     print "\nI will return threads from the $subreddit folder in which /u/$username said the string:$string.\n";
 }
 
@@ -90,13 +93,13 @@ my %comment_link; # Commented links by $username (key is edate of comment)
 
 my %comment_content; # The body of the comments. (key is edate of comment)
 
-# In the event that a string was supplied in $string, we use these:
+# In the event that a string was supplied in $string, we ALSO use these:
 my %string_comment_link;
 my %string_comment_content;
 my %string_comment_author;
 
-my $Target_dir = "$subreddit/Extended_JSON_Comments";
-my $index_filename = $Target_dir."/_INDEX";
+my $target_dir = "$subreddit/Extended_JSON_Comments";
+my $index_filename = $target_dir."/_INDEX";
 unless (-e $index_filename) {
     print "Creating index of dates --> files.\n";
     `perl index_creator.pl $subreddit`;
@@ -129,10 +132,11 @@ while (my $line = <$FILE>) {
 	push @files_to_open, $pieces[1];
     }
 }
-print " done.\n";
+
+print " done.";
 close $FILE;
 $time_counter=0;
-print "Searching through the Reddit threads";
+print " Searching through the Reddit threads";
 
 THRD: foreach my $Thread (@files_to_open) {
     open (my $FILE, "<", $Thread)
@@ -149,27 +153,24 @@ THRD: foreach my $Thread (@files_to_open) {
     for my $listy ( @{$FirstJSON->{data}->{children}} ) {
 	$link = "https://www.reddit.com".$listy->{data}->{permalink};
 	my $edate = $listy->{data}->{created_utc};
-	if ($edate < $begin_edate or $edate > $end_edate) {
-	    next THRD;	      # If wrong date I want the next $Thread.
-	}
+	# if ($edate < $begin_edate or $edate > $end_edate) {
+	#     next THRD;		# This check is not necessary, the index took care of it.
+	# }
 	if (!length($string) and !length($username)) {
 	    $submit_link{$edate} = $link;
 	    next THRD;
 	}
-	my $author = $listy->{data}->{author};
 	unless (!length $username) {
+	    my $author = $listy->{data}->{author};
 	    if (is_username($author)) {
-		## {id} in header JSON (in content JSON it's under {link_id})
-		# my $id = $listy->{data}->{id}; 
-		# my $title = $listy->{data}->{title};
 		$submit_link{$edate} = $link;
 	    }
 	}
     }
 
     for my $contenty ( @{$SecondJSON->{data}->{children}} ) {
-	my $id = $contenty->{data}->{link_id}; 
-	$id = substr($id,3);
+	# my $id = $contenty->{data}->{link_id}; 
+	# $id = substr($id,3);  # If you need the id of the thread itself.
 	
 	my $author = $contenty->{data}->{author};
 	my $edate = $contenty->{data}->{created_utc}; 
@@ -208,34 +209,25 @@ THRD: foreach my $Thread (@files_to_open) {
     }
 }
 
+print " done.\n";
+
 ## Print submissions.
 unless (!(scalar keys %submit_link)) {
     print "\n";
     print "Submissions";
-    unless (!length $username) {
-	print " by /u/$username: ";
-    }
+    print " by /u/$username: " unless (!length $username);
     print "\n";
     foreach (sort keys %submit_link) {
 	print "$_: ",$submit_link{$_};
 	print "\n";
     }
 }
-
-print " done.\n";
-
 ## If no string was supplied, print all comments by given username.
 if (!length $string) {
-
     print "All comments";
-
-    unless (!length $username) {
-	print " by /u/$username: ";
-    }
-    
+    print " by /u/$username: " unless (!length $username);
     print "\n";
     foreach (sort keys %comment_link) {
-	#	print "---"x10,"\n";
 	print "$_: ",$comment_link{$_};
 	print "\n";
 	unless ($print_option eq "N"){
@@ -252,7 +244,6 @@ elsif (length $string) {
     }
     print "containing the string \"$string\": \n";
     foreach (sort keys %string_comment_link) {
-	#	print "---"x10,"\n";
 	print "$_: ",$string_comment_link{$_};
 	print "\n";
 	unless ($print_option eq "N"){
