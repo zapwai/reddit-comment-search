@@ -11,7 +11,7 @@
 ## An example of using the awesome command-line program jq:
 ## cat 008ny.json | jq ".[0].data.children[0].data.name"
 
-# Despite manually checking for existence of the file, we also use no-clobber mode, adding -nc to the wget, so it doesn't waste bandwidth.
+# Despite manually checking for existence of the file, we also use wgets no-clobber mode.
 use autodie;
 use JSON;
 require "resources.pl";
@@ -31,7 +31,6 @@ sub Recursive_Fetch{
     close $FILENAME;
     # Get some info from the second JSON in $row before you maul it.
     # $abbrev is just the unique id of the main thread.
-    # $perma is its permalink which will be prepended in the $MoreLink
 
     my ($FirstJSON, $SecondJSON) = split_merged_jsons($row);
 
@@ -96,11 +95,12 @@ sub print_ids {
 	die "Unable to create directory $target_dir\n $! \n";
     }
 
-my $Listing_dir = "$subreddit/LINKS";		
-
+my $Listing_dir = "$subreddit/LINKS";
+my $time_counter = 0;
 my @files = <"$Listing_dir/*">;
 foreach my $file (@files) {
-    print "$file \n";
+    $time_counter++;
+    print "." if ($time_counter % 100 == 0);
     open (my $FH, "<", $file);
     my $str = <$FH>;
     close $FH;

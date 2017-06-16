@@ -38,18 +38,18 @@ unless (-e $config_file) {
 }
 
 #Process the config file
-if (-e $config_file) {
-    open (my $FH, "<", $config_file)
-	or die ("I cannot read the config file. $!\n");
-    my @data;
-    while (my $line = <$FH>) {
-	my @pieces = split(":", $line);
-	push @data, pop @pieces;
-    }
-    ($user_begin, $user_end, $subreddit, $username, $string) = @data;
+open (my $FH, "<", $config_file)
+    or die ("I cannot read the config file. $!\n");
+my @data;
+while (my $line = <$FH>) {
+    my @pieces = split(":", $line);
+    push @data, pop @pieces;
 }
+($user_begin, $user_end, $subreddit, $username, $string) = @data;
 
 chomp ($user_begin, $user_end, $subreddit, $username, $string);
+
+my $ONE_DAY = 86400;
 
 my $begin_edate = get_edate($user_begin) if (is_valid_date($user_begin));
 my $end_edate = get_edate($user_end) if (is_valid_date($user_end));
@@ -63,7 +63,6 @@ if ($end_edate < $begin_edate) {
     exit;
 }
 
-my $ONE_DAY = 86400;
 my $TIME_PERIOD = $ONE_DAY; 
 
 # Number of days to download.
@@ -103,7 +102,7 @@ unless(-e $listing_dir or mkdir $listing_dir) {
     die "Unable to create directory $listing_dir\n $! \n";
 }
 
-print "Beginning downloads, this may take some time...\n";
+print "Beginning downloads, this may take some time.";
 
 # Repeat until all downloads successful. $cnt verifies.
 my $cnt=0;		      
@@ -124,8 +123,11 @@ while ($cnt < $TOTAL_PERIODS) {
 	$START_TIME += $TIME_PERIOD;
 	$END_TIME += $TIME_PERIOD;
     }
+    # Some feedback is nice when downloading very long time frames.
+    $| = 1;
+    print "." if ($cnt % 100 == 0);
 }
 
 #Now pull down the actual comment threads using another script.
-print "Listings received, now downloading each reddit thread.\n";
+print "\nListings received, now downloading each reddit thread. (This may take even more time.)\n";
 exec("perl pull_comment_threads.pl $subreddit");

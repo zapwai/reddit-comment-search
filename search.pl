@@ -24,24 +24,21 @@ if (!-e $config_file) {
     exit;
 }
 
-my ($user_begin, $user_end, $subreddit, $username, $string, $print_option);
-
-if (-e $config_file) {
-    open (FH, "<", $config_file);
-    my @data;
-    while (my $line = <FH>) {
-	my @pieces = split(":", $line);
-	push @data, pop @pieces;
-    }
-    ($user_begin, $user_end, $subreddit, $username, $string, $print_option) = @data;
+open (my $FH, "<", $config_file);
+my @data;
+while (my $line = <$FH>) {
+    my @pieces = split(":", $line);
+    push @data, pop @pieces;
 }
 
-chomp ($user_begin, $user_end, $subreddit, $username, $string, $print_option);
+chomp @data;
+my ($user_begin, $user_end, $subreddit, $username, $string, $print_option) = @data;
 
+my $ONE_DAY = 86400;
 my $begin_edate = get_edate($user_begin) if (is_valid_date($user_begin));
 my $end_edate = get_edate($user_end) if (is_valid_date($user_end));
 # Add one day to the end_edate, to include the last day.
-$end_edate += $ONE_DAY;
+$end_edate += $ONE_DAY;	
 
 if ($end_edate < $begin_edate) {
     print "You want time to move backwards?\n";
@@ -108,7 +105,7 @@ my @files_to_open;
 print "Reading index";
 open (my $FILE, "<", $index_filename);
 my $time_counter = 0;
-    $| = 1;
+$| = 1;
 while (my $line = <$FILE>) {
     chomp($line);
     my @pieces = split("\t", $line);
@@ -136,6 +133,7 @@ print " done.\n";
 close $FILE;
 $time_counter=0;
 print "Searching through the Reddit threads";
+
 THRD: foreach my $Thread (@files_to_open) {
     open (my $FILE, "<", $Thread)
 	or die("Thread $Thread cannot be opened.\n$!\n");
