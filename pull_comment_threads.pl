@@ -125,7 +125,7 @@ foreach my $file (@files) {
 	open (my $FILEHANDLE, "<", $LocalLink);
 	my $TEXT = <$FILEHANDLE>;
 	close $FILEHANDLE;
-	my $row = $TEXT;
+	my $row = $TEXT;       # lol
 	print_ids($TEXT);      # @MoreIDs is now full, or still empty.
 
 	my ($FirstJSON, $SecondJSON) = split_merged_jsons($row);

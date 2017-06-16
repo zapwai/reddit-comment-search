@@ -77,11 +77,9 @@ unless (!length($string) or !length $username) {
 
 if (!length($string) and !length($username)) {
     print "(No username and no string will simply print all links in your requested timeframe.)\n";
-}
-elsif (!length $string and length $username) {
+} elsif (!length $string and length $username) {
     print "\nA general search for /u/$username in the $subreddit folder.\n";
-}
-elsif (length $string and !length $username) {
+} elsif (length $string and !length $username) {
     print "\nA general search for the string \"$string\" in the $subreddit folder.\n";
 }
 
@@ -110,8 +108,11 @@ open (my $FILE, "<", $index_filename);
 while (my $line = <$FILE>) {
     chomp($line);
     my @pieces = split("\t", $line);
-    if ($pieces[0] < $begin_edate or $pieces[1] > $end_edate) {next}
-    else {push @files_to_open, $pieces[1];}
+    if ($pieces[0] < $begin_edate or $pieces[1] > $end_edate) {
+	next;
+    } else {
+	push @files_to_open, $pieces[1];
+    }
 }
 close $FILE;
 
@@ -200,7 +201,7 @@ if (!(scalar keys %submit_link)) {
 print "\n";
 
 foreach (sort keys %submit_link) {
-#    print "---"x10,"\n";
+    #    print "---"x10,"\n";
     print "$_: ",$submit_link{$_};
     print "\n";
 }
@@ -215,7 +216,7 @@ if (!length $string) {
     }
     print "\n";
     foreach (sort keys %comment_link) {
-#	print "---"x10,"\n";
+	#	print "---"x10,"\n";
 	print "$_: ",$comment_link{$_};
 	print "\n";
 	unless ($print_option eq "N"){
@@ -232,7 +233,7 @@ elsif (length $string) {
     }
     print "containing the string \"$string\": \n";
     foreach (sort keys %string_comment_link) {
-#	print "---"x10,"\n";
+	#	print "---"x10,"\n";
 	print "$_: ",$string_comment_link{$_};
 	print "\n";
 	unless ($print_option eq "N"){
