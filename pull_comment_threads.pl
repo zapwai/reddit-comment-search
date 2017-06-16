@@ -11,11 +11,15 @@
 ## An example of using the awesome command-line program jq:
 ## cat 008ny.json | jq ".[0].data.children[0].data.name"
 
-# Despite manually checking for existence of the file, we use no-clobber mode, adding -nc to the wget, so it doesn't waste bandwidth.
+# Despite manually checking for existence of the file, we also use no-clobber mode, adding -nc to the wget, so it doesn't waste bandwidth.
 use autodie;
 use JSON;
+require "resources.pl";
+
 my $subreddit = shift;
-if (!length $subreddit) {print "No subreddit provided, halt.\n"; exit;}
+if (!length $subreddit) {
+    print "No subreddit provided, halt.\n"; exit;
+}
 my @MoreIDs;
 my $target_dir = "$subreddit/Extended_JSON_Comments";
 
@@ -29,12 +33,8 @@ sub Recursive_Fetch{
     # $abbrev is just the unique id of the main thread.
     # $perma is its permalink which will be prepended in the $MoreLink
 
-    # We split the JSON file (bc it's a merged array [])
-    my $MehPt = index( $row, 'Listing' ) + 3;
-    my $BrokenRow = substr ( $row, $MehPt ); 
-    my $EndPt = index( $BrokenRow, 'Listing' ) + 4;
-    my $FirstJSON= substr ( $row, 1 , ($EndPt - 3) );
-    my $SecondJSON = substr ( $row, $EndPt , -1);
+    my ($FirstJSON, $SecondJSON) = split_merged_jsons($row);
+
     my $ListingJSON = decode_json $FirstJSON;
     my $CommentJSON = decode_json $SecondJSON;
     my $link;
@@ -92,9 +92,9 @@ sub print_ids {
     }
 }
 
-unless (-e $target_dir) {
-    mkdir $target_dir;
-}
+    unless (-e $target_dir or mkdir $target_dir) {
+	die "Unable to create directory $target_dir\n $! \n";
+    }
 
 my $Listing_dir = "$subreddit/LINKS";		
 
@@ -126,13 +126,10 @@ foreach my $file (@files) {
 	my $TEXT = <$FILEHANDLE>;
 	close $FILEHANDLE;
 	my $row = $TEXT;
-	print_ids($TEXT);     # @MoreIDs is now full, or still empty.
+	print_ids($TEXT);      # @MoreIDs is now full, or still empty.
 
-	my $MehPt = index( $row, 'Listing' ) + 3;
-	my $BrokenRow = substr ( $row, $MehPt ); 
-	my $EndPt = index( $BrokenRow, 'Listing' ) + 4;
-	my $FirstJSON= substr ( $row, 1 , ($EndPt - 3) );
-	my $SecondJSON = substr ( $row, $EndPt , -1);
+	my ($FirstJSON, $SecondJSON) = split_merged_jsons($row);
+	
 	my $ListingJSON = decode_json $FirstJSON;
 	my $CommentJSON = decode_json $SecondJSON;
 	# You can use the second JSON, it also has a permalink.

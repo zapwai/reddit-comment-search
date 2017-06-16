@@ -13,9 +13,9 @@
 ## Currently inefficient.
 ## For instance, Creates two sets of hashes for no real reason.
 ## Also many double-checks on existence of $username and $string.
-
-require "./date_routines.pl"; #is_valid and get_edate functions
+require "resources.pl";
 use JSON;
+use autodie;
 
 my $config_file = "scraper_config.txt";
 if (!-e $config_file) {
@@ -87,8 +87,7 @@ elsif (length $string and !length $username) {
 
 # Reddit thread JSONs are two merged together. e.g. [{},{}]
 # We remove the [], then create header ($FirstJSON) and content ($SecondJSON).
-# For some context check out a .json file, perhaps try the jq command. e.g.
-# jq "." Buddhism/Extended_JSON_Comments/15sk1n-c7r0v33.json | grep replies -C 5
+# For some context check out a .json file, with the jq command.
 
 my $link;	 # permalink to the thread itself.
 my %submit_link; # Submitted links by $username (key is edate of submission)
@@ -102,20 +101,28 @@ my %string_comment_content;
 my %string_comment_author;
 
 my $Target_dir = "$subreddit/Extended_JSON_Comments";
+my $index_filename = $Target_dir."/_INDEX";
+unless (-e $index_filename) {
+    `perl index_creator.pl $subreddit`;
+}
+my @files_to_open;
+open (my $FILE, "<", $index_filename);
+while (my $line = <$FILE>) {
+    chomp($line);
+    my @pieces = split("\t", $line);
+    if ($pieces[0] < $begin_edate or $pieces[1] > $end_edate) {next}
+    else {push @files_to_open, $pieces[1];}
+}
+close $FILE;
 
-THRD: foreach my $Thread (<"$Target_dir/*">) {
+THRD: foreach my $Thread (@files_to_open) {
     open (my $FILE, "<", $Thread)
 	or die("Thread $Thread cannot be opened.\n$!\n");
     my $row = <$FILE>;
     close $FILE;
-    # I want the location of the  second  occurance of the word "Listing".
-    # I need to split the JSONs a bit earlier than this, at comma.
-    my $MehPt = index( $row, 'Listing' ) + 3;
-    my $BrokenRow = substr ( $row, $MehPt );
-    my $EndPt = index( $BrokenRow, 'Listing' ) + 4;
-    my $FirstJSON= substr ( $row, 1 , ($EndPt - 3) ); 
-    my $SecondJSON = substr ( $row, $EndPt , -1);
 
+    my ($FirstJSON, $SecondJSON) = split_merged_jsons($row);
+    
     $FirstJSON = decode_json($FirstJSON);
     $SecondJSON = decode_json($SecondJSON);
 

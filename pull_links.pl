@@ -5,7 +5,7 @@
 #the subreddit/LINKS folder is created if it does not already exist.
 #user is prompted for start and end dates, as well as the subreddit name.
 #these are convered to epoch dates, the number of days counted, and links for each DAY are pulled.
-
+require "resources.pl";
 require "./date_routines.pl";	#Gets the edate given mmddyy format.
 
 my ($user_begin, $user_end, $subreddit, $username, $string);
