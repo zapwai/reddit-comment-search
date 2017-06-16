@@ -6,13 +6,13 @@
 #user is prompted for start and end dates, as well as the subreddit name.
 #these are convered to epoch dates, the number of days counted, and links for each DAY are pulled.
 
-use DateTime;
+require "./date_routines.pl";	#Gets the edate given mmddyy format.
 
 my ($user_begin, $user_end, $subreddit, $username, $string);
-
 my $config_file = "scraper_config.txt";
 
 #Normal usage would be to edit the scraper_config.txt file.
+#This sets the values in case user deleted the config file.
 unless (-e $config_file) {
     print "Enter start date (mmddyy): ";
     $user_begin = <STDIN>;
@@ -33,16 +33,17 @@ unless (-e $config_file) {
 	$subreddit = "all\n";
     }
 
-    open (my $FH, ">", $config_file);
+    open (my $FH, ">", $config_file)
+	or die ("I cannot write the config file. $!\n");
     print $FH "startdate(mmddyy):".$user_begin."enddate(mmddyy):".$user_end."subreddit:".$subreddit."username:".$username."string:".$string;
-    close $FH;
 }
 
 #Process the config file
 if (-e $config_file) {
-    open (FH, "<", $config_file);
+    open (my $FH, "<", $config_file)
+	or die ("I cannot read the config file. $!\n");
     my @data;
-    while (my $line = <FH>) {
+    while (my $line = <$FH>) {
 	my @pieces = split(":", $line);
 	push @data, pop @pieces;
     }
@@ -51,51 +52,12 @@ if (-e $config_file) {
 
 chomp ($user_begin, $user_end, $subreddit, $username, $string);
 
-sub get_edates {
-    my ($user_begin, $user_end) = (shift, shift);
-    # Testing the format of input dates.
-    if ($user_begin =~ m/[^\d]/ or $user_end =~ m/[^\d]/) {
-	print "Non-numeric character encountered in date.\n"; exit;
-    }
-    if (length($user_begin) != 6 or length($user_end) != 6) {
-	print "Wrong date length encountered.\n"; exit;
-    }
+my $begin_edate = get_edate($user_begin) if (is_valid_date($user_begin));
+my $end_edate = get_edate($user_end) if (is_valid_date($user_end));
+# Add one day to the end_edate. (The edate is midnight of the date provided, which would skip the last day.)
+$end_edate += $ONE_DAY;
 
-    my @begin_nums = split "", $user_begin;
-    my @end_nums = split "", $user_end;
-
-    my $begin_day = $begin_nums[2].$begin_nums[3];
-    my $begin_month = $begin_nums[0].$begin_nums[1];
-    my $begin_year = "20".$begin_nums[4].$begin_nums[5];
-
-    my $dt_begin = DateTime->new(
-	year => $begin_year,
-	month => $begin_month,
-	day => $begin_day,
-	hour => 0,
-	minute => 0,
-	second => 0, 
-    );
-    my $begin_edate = $dt_begin->epoch;
-
-    my $end_day = $end_nums[2].$end_nums[3];
-    my $end_month = $end_nums[0].$end_nums[1];
-    my $end_year = "20".$end_nums[4].$end_nums[5];
-
-    my $dt_end = DateTime->new(
-	year => $end_year,
-	month => $end_month,
-	day => $end_day+1, # May as well include this last day, not stop at midnight.
-	hour => 0,
-	minute => 0,
-	second => 0,
-    );
-    my $end_edate = $dt_end->epoch;
-    return ($begin_edate, $end_edate);
-}
-
-my ($begin_edate, $end_edate) = get_edates($user_begin, $user_end);
-
+# Halt on messed up order of dates.
 if ($end_edate < $begin_edate) {
     print "You want time to move backwards?\n";
     print "I don't think the date $user_begin comes before $user_end...\n";
@@ -103,21 +65,21 @@ if ($end_edate < $begin_edate) {
 }
 
 my $ONE_DAY = 86400;
-#my $ONE_WEEK = $ONE_DAY*7;	# Was initially used for fewer files.
 my $TIME_PERIOD = $ONE_DAY; 
 
-my $TOTAL_PERIODS = ($end_edate - $begin_edate)/$ONE_DAY; # Number of days to download.
+# Number of days to download.
+my $TOTAL_PERIODS = ($end_edate - $begin_edate)/$TIME_PERIOD; 
 
-my $BEGIN = $begin_edate;
-my $TRUE_END = $end_edate;
-
-$subreddit =~ s/^\s+|\s+$//g;	# remove starting or trailing spaces
-if ($subreddit =~ /\s/) { # At this point if it contains spaces we exit.
+# Remove leading or trailing spaces
+$subreddit =~ s/^\s+|\s+$//g;
+# No multiple subreddits - if it contains a space we exit.
+if ($subreddit =~ /\s/) { 
     print "Do not input more than one subreddit please.\n";
     exit;
 }
 
-# Check if this subreddit already exists (in lowercase or something, instead of whatever the proper format might be).
+# Check if this subreddit already exists with a funny capitalized name
+# Use the name that already exists.
 opendir my $current_folder, "./";
 my @files_in_current_folder = readdir $current_folder;
 close $current_folder;
@@ -136,22 +98,24 @@ unless(-e $subreddit or mkdir $subreddit) {
     die "Unable to create directory $subreddit\n $! \n";
 }
 
-my $dir = "./".$subreddit."/LINKS";
-unless(-e $dir or mkdir $dir) {
-    die "Unable to create directory $dir\n $! \n";
+# Make the listings directory if it does not already exist.
+my $listing_dir = "./".$subreddit."/LINKS";
+unless(-e $listing_dir or mkdir $listing_dir) {
+    die "Unable to create directory $listing_dir\n $! \n";
 }
-# Repeat until all downloads successful.
+
+# Repeat until all downloads successful. $cnt verifies.
 my $cnt=0;		      
 while ($cnt < $TOTAL_PERIODS) {	
     $cnt=0;
-    my $START_TIME = $BEGIN; 
+    my $START_TIME = $begin_edate;
     my $END_TIME = $START_TIME + $TIME_PERIOD;
     foreach my $k (1..$TOTAL_PERIODS) {
 	my $linkaddy = "https://www.reddit.com/r/".$subreddit."/search.json?q=timestamp:$START_TIME..$END_TIME&sort=new&restrict_sr=on&limit=100&syntax=cloudsearch";
 
-	my $filename = "$dir/$START_TIME-to-$END_TIME.json";
+	my $filename = "$listing_dir/$START_TIME-to-$END_TIME.json";
 	unless (-s $filename){ 
-	    `wget --tries=100 -O $filename "$linkaddy"`; # Could also use the no-clobber -nc feature, but not necessary.
+	    `wget -nc -q --tries=100 -O $filename "$linkaddy"`; 
 	}
 	if (-s $filename) {
 	    $cnt++;
@@ -161,5 +125,6 @@ while ($cnt < $TOTAL_PERIODS) {
     }
 }
 
-# Now that we've finished, pull down the actual comment threads using another script.
+#Now pull down the actual comment threads using another script.
+print "Listings received, now downloading each reddit thread.\n";
 exec("perl pull_comment_threads.pl $subreddit");

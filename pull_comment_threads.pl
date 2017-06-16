@@ -12,23 +12,19 @@
 ## cat 008ny.json | jq ".[0].data.children[0].data.name"
 
 # Despite manually checking for existence of the file, we use no-clobber mode, adding -nc to the wget, so it doesn't waste bandwidth.
-
+use autodie;
 use JSON;
-
 my $subreddit = shift;
-
-my $TEXT;	    
-my @MORE_IDs;
-
+if (!length $subreddit) {print "No subreddit provided, halt.\n"; exit;}
+my @MoreIDs;
 my $target_dir = "$subreddit/Extended_JSON_Comments";
 
-# This pulls More_IDs for all sub_threads.
+# This pulls MoreIDs for all sub_threads.
 sub Recursive_Fetch{
     my ($NewName, $abbrev) = @_;
-
-    open (FILENAME, $NewName);
-    my $row = <FILENAME>;
-    close FILENAME;
+    open (my $FILENAME, "<", $NewName);
+    my $row = <$FILENAME>;
+    close $FILENAME;
     # Get some info from the second JSON in $row before you maul it.
     # $abbrev is just the unique id of the main thread.
     # $perma is its permalink which will be prepended in the $MoreLink
@@ -44,54 +40,53 @@ sub Recursive_Fetch{
     my $link;
     for my $listy ( @{$ListingJSON->{data}->{children}} ) {
 	$link = "https://www.reddit.com".$listy->{data}->{permalink};
-	# Could have just used {url}.
     }
-    my @Sub_IDs;
+    my @SubIDs;
     while ( index( $row , '"kind": "more"' ) != -1) {
 	$row = substr ( $row, index( $row , '"kind": "more"') + 6 );
 	my $start_pt = index ( $row, '"id": "' ) + 7;
 	$row = substr ( $row, $start_pt ); 
 	my $stop_pt = index ( $row, '"' );
 	my $ID = substr($row, 0, $stop_pt);
-
-	if ( $ID eq "_" ) { # normal case. Move to next occurance of id.
+	#normal case. Move to next occurance of id.
+	if ( $ID eq "_" ) {
 	    my $start_pt = index ( $row, '"id": "' ) + 7;
 	    $row = substr ( $row, $start_pt ); 
 	    my $stop_pt = index ( $row, '"' );
 	    $ID = substr($row, 0, $stop_pt);
-	    push @Sub_IDs, $ID;
+	    push @SubIDs, $ID;
 	    $row = substr ( $row, $stop_pt + 1 );
 	} else {
-	    push @Sub_IDs, $ID;
+	    push @SubIDs, $ID;
 	    $row = substr ( $row, $stop_pt + 1 );
 	}
     }
-    foreach (@Sub_IDs) {
+    foreach (@SubIDs) {
 	my $MoreLink = $link.$_.".json";
 	my $NewName = "./$target_dir/$abbrev-$_.json";
 	`wget -q -nc -O $NewName $MoreLink`;
 	Recursive_Fetch($NewName, $abbrev);
     }
-       
 }
 
-# This pulls More_IDs for the main thread.
-sub print_ids() {		
+# This pulls MoreIDs for the main thread.
+sub print_ids {
+    my $TEXT = shift;
     while ( index( $TEXT , '"kind": "more"' ) != -1) {
 	$TEXT = substr ( $TEXT, index( $TEXT , '"kind": "more"') + 6 );
 	my $start_pt = index ( $TEXT, '"id": "' ) + 7;
 	$TEXT = substr ( $TEXT, $start_pt ); 
 	my $stop_pt = index ( $TEXT, '"' );
 	my $ID = substr($TEXT, 0, $stop_pt);
-	if ( $ID eq "_" ) { # normal case. Move to next occurance of id.
+	if ( $ID eq "_" ) { 
 	    my $start_pt = index ( $TEXT, '"id": "' ) + 7;
 	    $TEXT = substr ( $TEXT, $start_pt ); 
 	    my $stop_pt = index ( $TEXT, '"' );
 	    $ID = substr($TEXT, 0, $stop_pt);
-	    push @MORE_IDs, $ID;
+	    push @MoreIDs, $ID;
 	    $TEXT = substr ( $TEXT, $stop_pt + 1 );
 	} else {
-	    push @MORE_IDs, $ID;
+	    push @MoreIDs, $ID;
 	    $TEXT = substr ( $TEXT, $stop_pt + 1 );
 	}
     }
@@ -101,15 +96,14 @@ unless (-e $target_dir) {
     mkdir $target_dir;
 }
 
-my $dir = "$subreddit/LINKS";		
-my $addy;
+my $Listing_dir = "$subreddit/LINKS";		
 
-my @files = <"$dir/*">;
+my @files = <"$Listing_dir/*">;
 foreach my $file (@files) {
     print "$file \n";
-    open (FH, $file);
-    my $str = <FH>;
-    close FH;
+    open (my $FH, "<", $file);
+    my $str = <$FH>;
+    close $FH;
     my $listing = decode_json $str;
     
     foreach my $item ( @{$listing->{data}->{children}} ) {   
@@ -128,12 +122,11 @@ foreach my $file (@files) {
 	# iv) wget the URL (it's another .json)
 	# v) repeat step iv recursively if necessary.
 	# (you just replace the last id with the new one.)
-	open (FILEHANDLE, $LocalLink);
-	$TEXT = <FILEHANDLE>;
-	close FILEHANDLE;
+	open (my $FILEHANDLE, "<", $LocalLink);
+	my $TEXT = <$FILEHANDLE>;
+	close $FILEHANDLE;
 	my $row = $TEXT;
-	print_ids();	      # @MORE_IDs is now full, or still empty.
-	# (and $TEXT is mauled.)
+	print_ids($TEXT);     # @MoreIDs is now full, or still empty.
 
 	my $MehPt = index( $row, 'Listing' ) + 3;
 	my $BrokenRow = substr ( $row, $MehPt ); 
@@ -148,13 +141,13 @@ foreach my $file (@files) {
 	    my $link = "https://www.reddit.com".$listy->{data}->{permalink};
 	    #		my $title = $listy->{data}->{title};
 	    #		$edate = $listy->{data}->{created_utc};
-	    foreach ( @MORE_IDs ) {
+	    foreach ( @MoreIDs ) {
 		my $MoreLink = $link.$_.".json";
 		my $NewName = "./$target_dir/$abbrev-$_.json";
 		`wget -q -nc -O $NewName $MoreLink`;
 		Recursive_Fetch($NewName, $abbrev);
 	    }
-	    @MORE_IDs = ();
+	    @MoreIDs = ();
 	}
     }
 }

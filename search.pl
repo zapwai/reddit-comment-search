@@ -14,7 +14,7 @@
 ## For instance, Creates two sets of hashes for no real reason.
 ## Also many double-checks on existence of $username and $string.
 
-use DateTime;
+require "./date_routines.pl"; #is_valid and get_edate functions
 use JSON;
 
 my $config_file = "scraper_config.txt";
@@ -38,50 +38,10 @@ if (-e $config_file) {
 
 chomp ($user_begin, $user_end, $subreddit, $username, $string, $print_option);
 
-sub get_edates {
-    my ($user_begin, $user_end) = (shift, shift);
-    # Testing the format of input dates.
-    if ($user_begin =~ m/[^\d]/ or $user_end =~ m/[^\d]/) {
-	print "Non-numeric character encountered in date.\n"; exit;
-    }
-    if (length($user_begin) != 6 or length($user_end) != 6) {
-	print "Wrong date length encountered.\n"; exit;
-    }
-
-    my @begin_nums = split "", $user_begin;
-    my @end_nums = split "", $user_end;
-
-    my $begin_day = $begin_nums[2].$begin_nums[3];
-    my $begin_month = $begin_nums[0].$begin_nums[1];
-    my $begin_year = "20".$begin_nums[4].$begin_nums[5];
-
-    my $dt_begin = DateTime->new(
-	year => $begin_year,
-	month => $begin_month,
-	day => $begin_day,
-	hour => 0,
-	minute => 0,
-	second => 0, 
-    );
-    my $begin_edate = $dt_begin->epoch;
-
-    my $end_day = $end_nums[2].$end_nums[3];
-    my $end_month = $end_nums[0].$end_nums[1];
-    my $end_year = "20".$end_nums[4].$end_nums[5];
-
-    my $dt_end = DateTime->new(
-	year => $end_year,
-	month => $end_month,
-	day => $end_day+1,	# include the last day itself.
-	hour => 0,
-	minute => 0,
-	second => 0,
-    );
-    my $end_edate = $dt_end->epoch;
-    return ($begin_edate, $end_edate);
-}
-
-my ($begin_edate, $end_edate) = get_edates($user_begin, $user_end);
+my $begin_edate = get_edate($user_begin) if (is_valid_date($user_begin));
+my $end_edate = get_edate($user_end) if (is_valid_date($user_end));
+# Add one day to the end_edate, to include the last day.
+$end_edate += $ONE_DAY;
 
 if ($end_edate < $begin_edate) {
     print "You want time to move backwards?\n";
@@ -111,17 +71,17 @@ if (!-e $subreddit) {
     exit;
 }
 
-if (!length($string) and !length($username)) {
-    print "(No username and no string will simply print all links in your requested timeframe.)\n";
-}
-
 unless (!length($string) or !length $username) {
     print "\nI will return threads from the $subreddit folder in which /u/$username said the string:$string.\n";
 }
-if (!length $string and length $username) {
+
+if (!length($string) and !length($username)) {
+    print "(No username and no string will simply print all links in your requested timeframe.)\n";
+}
+elsif (!length $string and length $username) {
     print "\nA general search for /u/$username in the $subreddit folder.\n";
 }
-if (length $string and !length $username) {
+elsif (length $string and !length $username) {
     print "\nA general search for the string \"$string\" in the $subreddit folder.\n";
 }
 
@@ -141,8 +101,10 @@ my %string_comment_link;
 my %string_comment_content;
 my %string_comment_author;
 
-THRD: foreach my $Thread (<"$subreddit/Extended_JSON_Comments/*">) {
-    open (my $FILE, $Thread)
+my $Target_dir = "$subreddit/Extended_JSON_Comments";
+
+THRD: foreach my $Thread (<"$Target_dir/*">) {
+    open (my $FILE, "<", $Thread)
 	or die("Thread $Thread cannot be opened.\n$!\n");
     my $row = <$FILE>;
     close $FILE;
