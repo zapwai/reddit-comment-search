@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 use JSON;
 use autodie;
-require "resources.pl";
+require "routines.pl";
 
 my $subreddit = shift;
 if (!length $subreddit) {

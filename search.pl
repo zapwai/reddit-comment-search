@@ -14,38 +14,11 @@
 ## For instance, Creates two sets of hashes for no real reason.
 ## Also many double-checks on existence of $username and $string. Lack of logic everywhere.
 ## The index and checking is unnecessary - reddit ids are ordered alphabetically.
-require "resources.pl";
+require "routines.pl";
 use JSON;
 use autodie;
 
-my $config_file = "config.txt";
-if (!-e $config_file) {
-    print "No configuration file, sorry, must halt.\n";
-    print "Please run pull_links.pl first.\n";
-    exit;
-}
-
-open (my $FH, "<", $config_file);
-my @data;
-while (my $line = <$FH>) {
-    my @pieces = split(":", $line);
-    push @data, pop @pieces;
-}
-
-chomp @data;
-my ($user_begin, $user_end, $subreddit, $username, $string, $print_option) = @data;
-
-my $ONE_DAY = 86400;
-my $begin_edate = get_edate($user_begin) if (is_valid_date($user_begin));
-my $end_edate = get_edate($user_end) if (is_valid_date($user_end));
-# Add one day to the end_edate, to include the last day.
-$end_edate += $ONE_DAY;	
-
-if ($end_edate < $begin_edate) {
-    print "You want time to move backwards?\n";
-    print "I don't think the date $user_begin comes before $user_end...\n";
-    exit;
-}
+do "get_config.pl" if (!length $begin_edate);
 
 # Remove beginning or ending spaces.
 $username =~ s/^\s+|\s+$//g;

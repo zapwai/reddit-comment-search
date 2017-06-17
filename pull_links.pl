@@ -5,63 +5,9 @@
 #the subreddit/LINKS folder is created if it does not already exist.
 #user is prompted for start and end dates, as well as the subreddit name.
 #these are convered to epoch dates, the number of days counted, and links for each DAY are pulled.
-require "resources.pl";
 
-my ($user_begin, $user_end, $subreddit, $username, $string);
-my $config_file = "config.txt";
-
-#Normal usage would be to edit the _config.txt file.
-#This sets the values in case user deleted the config file.
-unless (-e $config_file) {
-    print "Enter start date (mmddyy): ";
-    $user_begin = <STDIN>;
-
-    print "Enter end date (mmddyy): ";
-    $user_end = <STDIN>;
-
-    print "Enter subreddit (default all): /r/";
-    $subreddit = <STDIN>;
-
-    print "Enter a username (default none): /u/";
-    $username = <STDIN>;
-
-    print "Enter a string (default none): ";
-    $string = <STDIN>;
-
-    if ($subreddit =~ /^\s*$/) {
-	$subreddit = "all\n";
-    }
-
-    open (my $FH, ">", $config_file)
-	or die ("I cannot write the config file. $!\n");
-    print $FH "startdate(mmddyy):".$user_begin."enddate(mmddyy):".$user_end."subreddit:".$subreddit."username:".$username."string:".$string;
-}
-
-#Process the config file
-open (my $FH, "<", $config_file)
-    or die ("I cannot read the config file. $!\n");
-my @data;
-while (my $line = <$FH>) {
-    my @pieces = split(":", $line);
-    push @data, pop @pieces;
-}
-($user_begin, $user_end, $subreddit, $username, $string) = @data;
-
-chomp ($user_begin, $user_end, $subreddit, $username, $string);
-
-my $ONE_DAY = 86400;
-
-my $begin_edate = get_edate($user_begin) if (is_valid_date($user_begin));
-my $end_edate = get_edate($user_end) if (is_valid_date($user_end));
-# Add one day to the end_edate. (The edate is midnight of the date provided, which would skip the last day.)
-$end_edate += $ONE_DAY;
-
-# Halt on messed up order of dates.
-if ($end_edate < $begin_edate) {
-    print "You want time to move backwards?\n";
-    print "I don't think the date $user_begin comes before $user_end...\n";
-    exit;
-}
+#require "routines.pl";
+do "get_config.pl";
 
 my $TIME_PERIOD = $ONE_DAY; 
 
@@ -102,7 +48,7 @@ unless(-e $listing_dir or mkdir $listing_dir) {
     die "Unable to create directory $listing_dir\n $! \n";
 }
 
-print "Beginning downloads, this may take some time.";
+print "Downloading thread listings.\n";
 
 # Repeat until all downloads successful. $cnt verifies.
 my $cnt=0;
@@ -115,20 +61,20 @@ while ($cnt < $TOTAL_PERIODS) {
 	my $linkaddy = "https://www.reddit.com/r/".$subreddit."/search.json?q=timestamp:$START_TIME..$END_TIME&sort=new&restrict_sr=on&limit=100&syntax=cloudsearch";
 
 	my $filename = "$listing_dir/$START_TIME-to-$END_TIME.json";
-	unless (-s $filename){ 
-	    `wget -nc -q --tries=100 -O $filename "$linkaddy"`; 
-	}
 	if (-s $filename) {
 	    $cnt++;
+	}
+	else {
+	    `wget -nc -q --tries=100 -O $filename "$linkaddy"`; 
 	}
 	$START_TIME += $TIME_PERIOD;
 	$END_TIME += $TIME_PERIOD;
     }
     # Some feedback is nice when downloading very long time frames.
 
-    print "." if ($cnt % 100 == 0);
+    print "." if ($cnt % 10 == 0);
 }
 
 #Now pull down the actual comment threads using another script.
-print "\nListings received, now downloading each reddit thread. (This may take even more time.)\n";
-exec("perl pull_comment_threads.pl $subreddit");
+print "\nListings received."; 
+do "pull_comment_threads.pl";

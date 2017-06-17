@@ -11,15 +11,18 @@
 ## An example of using the awesome command-line program jq:
 ## cat 008ny.json | jq ".[0].data.children[0].data.name"
 
-# Despite manually checking for existence of the file, we also use wgets no-clobber mode.
 use autodie;
 use JSON;
-require "resources.pl";
+require "routines.pl";
 
-my $subreddit = shift;
+do "get_config.pl" if (!length $begin_edate);
+
 if (!length $subreddit) {
     print "No subreddit provided, halt.\n"; exit;
 }
+
+print "Now downloading each reddit thread.\n";
+
 my @MoreIDs;
 my $target_dir = "$subreddit/Extended_JSON_Comments";
 
@@ -96,24 +99,37 @@ sub print_ids {
     }
 
 my $Listing_dir = "$subreddit/LINKS";
+my @files_to_open;
+opendir my $dir, $Listing_dir or die("Cannot open LINKS $!\n"); 
+foreach my $filename (readdir $dir){
+    my @pieces = split "-", $filename;
+    if ($pieces[0] >= $begin_edate and $pieces[0] < $end_edate) {unshift @files_to_open, $Listing_dir."/".$filename;}
+}
+closedir $dir;
+
+print "@files_to_open\n";
+
 my $time_counter = 0;
 $|=1;
-my @files = <"$Listing_dir/*.json">;
-foreach my $file (@files) {
-    $time_counter++;
-    print "." if ($time_counter % 100 == 0);
+#my @files = <"$Listing_dir/*.json">;
+foreach my $file (@files_to_open) {
     open (my $FH, "<", $file);
     my $str = <$FH>;
     close $FH;
     my $listing = decode_json $str;
     
-    foreach my $item ( @{$listing->{data}->{children}} ) {   
+    foreach my $item ( @{$listing->{data}->{children}} ) {
+	$time_counter++;
+#	{
+#	    local $| = 1;
+	    print "." if ($time_counter % 100 == 0);
+#	}
 	my $fullname = $item->{data}->{name}; 
 	my $abbrev = substr $fullname, 3; # abbrev is the id
 	my $link = "https://www.reddit.com/r/$subreddit/".$abbrev.".json";
 	my $LocalLink = "./$target_dir/$abbrev.json";
 	unless ( -s $LocalLink ){
-	    `wget -q -nc -O $LocalLink $link`;
+	    `wget -q -nc --tries=50 -O $LocalLink $link`;
 	}
 	## Now before we move on, we should...
 	# i) Look at this threads .json to see if it contains "kind": "more"
@@ -150,4 +166,5 @@ foreach my $file (@files) {
     }
 }
 
-exec("perl search.pl");
+print "Threads received.\n";
+do "search.pl";
