@@ -1,6 +1,20 @@
 #!/usr/bin/perl
-# Copyright 2017 David Ferrone
-#
+# Reddit Comment Search
+# Copyright (C) 2017 David Ferrone
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+##################################################################################
+##################################################################################
 # This script takes $subreddit as an argument.
 # (That directory will already exist if this is called from pull_links.pl)
 # 
@@ -66,7 +80,7 @@ sub Recursive_Fetch{
     foreach (@SubIDs) {
 	my $MoreLink = $link.$_.".json";
 	my $NewName = "./$target_dir/$abbrev-$_.json";
-	`wget -q -nc -O $NewName $MoreLink`;
+	`wget -q -nc --tries=100 -O $NewName $MoreLink`;
 	Recursive_Fetch($NewName, $abbrev);
     }
 }
@@ -128,7 +142,7 @@ foreach my $file (@files_to_open) {
 	my $link = "https://www.reddit.com/r/$subreddit/".$abbrev.".json";
 	my $LocalLink = "./$target_dir/$abbrev.json";
 	unless ( -s $LocalLink ){
-	    `wget -q -nc --tries=50 -O $LocalLink $link`;
+	    `wget -q -nc --tries=100 -O $LocalLink $link`;
 	}
 	## Now before we move on, we should...
 	# i) Look at this threads .json to see if it contains "kind": "more"
@@ -157,7 +171,7 @@ foreach my $file (@files_to_open) {
 	    foreach ( @MoreIDs ) {
 		my $MoreLink = $link.$_.".json";
 		my $NewName = "./$target_dir/$abbrev-$_.json";
-		`wget -q -nc -O $NewName $MoreLink`;
+		`wget -q -nc --tries=100 -O $NewName $MoreLink`;
 		Recursive_Fetch($NewName, $abbrev);
 	    }
 	    @MoreIDs = ();

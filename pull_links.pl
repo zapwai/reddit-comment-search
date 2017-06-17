@@ -1,5 +1,21 @@
 #!/usr/bin/perl
-# Copyright 2017 David Ferrone
+# Reddit Comment Search
+# Copyright (C) 2017 David Ferrone
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+##################################################################################
+##################################################################################
+##
 ## Pulls LISTINGS of threads between specific dates using reddit's cloudsearch. The timestamp uses epoch dates.
 
 #the subreddit/LINKS folder is created if it does not already exist.
@@ -69,10 +85,9 @@ while ($cnt < $TOTAL_PERIODS) {
 	}
 	$START_TIME += $TIME_PERIOD;
 	$END_TIME += $TIME_PERIOD;
+	# Some feedback is nice when downloading very long time frames.
+	print "." if ($cnt % 100 == 0);
     }
-    # Some feedback is nice when downloading very long time frames.
-
-    print "." if ($cnt % 10 == 0);
 }
 
 #Now pull down the actual comment threads using another script.

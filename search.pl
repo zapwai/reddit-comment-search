@@ -1,7 +1,22 @@
 #!/usr/bin/perl
-# Copyright 2017 David Ferrone
+# Reddit Comment Search
+# Copyright (C) 2017 David Ferrone
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+##################################################################################
+##################################################################################
 #
-## Requires _config.txt file.
+## Requires config.txt file.
 ## This will search each comment thread in the subreddit folder,
 ## and produce hashes of links, one for submissions, one for comments,
 ## containing all occurrences where $username is the author.
