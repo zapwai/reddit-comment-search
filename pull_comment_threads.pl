@@ -21,7 +21,7 @@ if (!length $subreddit) {
     print "No subreddit provided, halt.\n"; exit;
 }
 
-print "Now downloading each reddit thread.\n";
+print " Now downloading each reddit thread.\n";
 
 my @MoreIDs;
 my $target_dir = "$subreddit/Extended_JSON_Comments";
@@ -101,17 +101,17 @@ sub print_ids {
 my $Listing_dir = "$subreddit/LINKS";
 my @files_to_open;
 opendir my $dir, $Listing_dir or die("Cannot open LINKS $!\n"); 
-foreach my $filename (readdir $dir){
+foreach my $filename (readdir $dir) {
     my @pieces = split "-", $filename;
-    if ($pieces[0] >= $begin_edate and $pieces[0] < $end_edate) {unshift @files_to_open, $Listing_dir."/".$filename;}
+    if ($pieces[0] >= $begin_edate and $pieces[0] < $end_edate) {
+	unshift @files_to_open, $Listing_dir."/".$filename;
+    }
 }
 closedir $dir;
 
-print "@files_to_open\n";
-
 my $time_counter = 0;
 $|=1;
-#my @files = <"$Listing_dir/*.json">;
+
 foreach my $file (@files_to_open) {
     open (my $FH, "<", $file);
     my $str = <$FH>;
@@ -120,10 +120,9 @@ foreach my $file (@files_to_open) {
     
     foreach my $item ( @{$listing->{data}->{children}} ) {
 	$time_counter++;
-#	{
-#	    local $| = 1;
-	    print "." if ($time_counter % 100 == 0);
-#	}
+
+	print "." if ($time_counter % 100 == 0);
+
 	my $fullname = $item->{data}->{name}; 
 	my $abbrev = substr $fullname, 3; # abbrev is the id
 	my $link = "https://www.reddit.com/r/$subreddit/".$abbrev.".json";
