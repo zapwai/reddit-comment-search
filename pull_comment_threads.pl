@@ -3,8 +3,8 @@
 #
 # This script takes $subreddit as an argument.
 # (That directory will already exist if this is called from pull_links.pl)
-#
-# This script searches each listing in the LINKS directory and uses wget to grab each actual comment thread.
+# 
+# This script searches EACH listing in the LINKS directory and uses wget to grab each actual comment thread.
 # It saves these as .json files in Extended_JSON_Comments.
 # If the comments come from a 'load more comments' link, they will have a dash in the filename. (e.g. 1wznk9-cf6tvjb.json)
 
@@ -97,7 +97,8 @@ sub print_ids {
 
 my $Listing_dir = "$subreddit/LINKS";
 my $time_counter = 0;
-my @files = <"$Listing_dir/*">;
+$|=1;
+my @files = <"$Listing_dir/*.json">;
 foreach my $file (@files) {
     $time_counter++;
     print "." if ($time_counter % 100 == 0);

@@ -8,9 +8,9 @@
 require "resources.pl";
 
 my ($user_begin, $user_end, $subreddit, $username, $string);
-my $config_file = "scraper_config.txt";
+my $config_file = "config.txt";
 
-#Normal usage would be to edit the scraper_config.txt file.
+#Normal usage would be to edit the _config.txt file.
 #This sets the values in case user deleted the config file.
 unless (-e $config_file) {
     print "Enter start date (mmddyy): ";
@@ -105,7 +105,8 @@ unless(-e $listing_dir or mkdir $listing_dir) {
 print "Beginning downloads, this may take some time.";
 
 # Repeat until all downloads successful. $cnt verifies.
-my $cnt=0;		      
+my $cnt=0;
+$| = 1;
 while ($cnt < $TOTAL_PERIODS) {	
     $cnt=0;
     my $START_TIME = $begin_edate;
@@ -124,7 +125,7 @@ while ($cnt < $TOTAL_PERIODS) {
 	$END_TIME += $TIME_PERIOD;
     }
     # Some feedback is nice when downloading very long time frames.
-    $| = 1;
+
     print "." if ($cnt % 100 == 0);
 }
 

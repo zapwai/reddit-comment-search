@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Copyright 2017 David Ferrone
 #
-## Requires scraper_config.txt file.
+## Requires _config.txt file.
 ## This will search each comment thread in the subreddit folder,
 ## and produce hashes of links, one for submissions, one for comments,
 ## containing all occurrences where $username is the author.
@@ -12,13 +12,13 @@
 
 ## Currently inefficient.
 ## For instance, Creates two sets of hashes for no real reason.
-## Also many double-checks on existence of $username and $string.
+## Also many double-checks on existence of $username and $string. Lack of logic everywhere.
 ## The index and checking is unnecessary - reddit ids are ordered alphabetically.
 require "resources.pl";
 use JSON;
 use autodie;
 
-my $config_file = "scraper_config.txt";
+my $config_file = "config.txt";
 if (!-e $config_file) {
     print "No configuration file, sorry, must halt.\n";
     print "Please run pull_links.pl first.\n";
@@ -141,7 +141,7 @@ print " Searching through the Reddit threads";
 THRD: foreach my $Thread (@files_to_open) {
     open (my $FILE, "<", $Thread)
 	or die("Thread $Thread cannot be opened.\n$!\n");
-    my $row = <$FILE>;
+    my $row = <$FILE>;		# unnecessary assignment.
     close $FILE;
     $time_counter++;
     print "." if ($time_counter % 100 == 0);
