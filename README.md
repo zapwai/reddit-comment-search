@@ -3,7 +3,7 @@ Downloads all listings (into LINKS) then threads (into Extended_JSON_Comments). 
 
 ----
 
-Uses wget and Perl with the DateTime and JSON modules.
+Uses wget and Perl with the DateTime and Cpanel::JSON::XS modules.
 
 Usage:
 1) Edit the config file,
@@ -19,6 +19,8 @@ This will wget all threads, one day at a time, from the subreddit.
 A small example is provided in the config file. It will take a while to download the threads if you use a larger time period or a popular subreddit.
 
 (e.g. Downloading /r/Buddhism from Jan 01 2007 to Jan 01 2014 took 10 minutes to pull listings, then 90 minutes to download the reddit threads, and ~5 minutes to search for a string in that set of files. This was 400MB of content at nearly 100KB/s, pulling down about 5 threads a second. It used 14MB of RAM by the end of the downloading phase, and 25-30MB during the (single-core) search. I'm still optimizing the search; Using an index file of dates to open fewer files halved the search time.)
+
+Update: Ooh... don't use JSON. Use JSON::XS. (Thanks Devel::NYTProf and Perl Maven! The 5 minute search I was crying about is down to 7 seconds.)
 
 A blank username will search all comments for a string.
 
@@ -37,7 +39,6 @@ Todo:
 Bugs:
 1) Prints all link submissions, regardless of date.
 2) Going to be buggy with huge subreddits like /r/all, bc of reddit's 1000 thread limit. (I would have to detect this and then increase the number of listings pulled to more than one a day.)
-3) Search is way too slow, even with a date index. So many system calls. :-(
 
 ----
 

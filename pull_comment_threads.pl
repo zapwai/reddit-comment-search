@@ -12,7 +12,7 @@
 ## cat 008ny.json | jq ".[0].data.children[0].data.name"
 
 use autodie;
-use JSON;
+use Cpanel::JSON::XS;
 require "routines.pl";
 
 do "get_config.pl" if (!length $begin_edate);

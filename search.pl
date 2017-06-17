@@ -15,7 +15,7 @@
 ## Also many double-checks on existence of $username and $string. Lack of logic everywhere.
 ## The index and checking is unnecessary - reddit ids are ordered alphabetically.
 require "routines.pl";
-use JSON;
+use Cpanel::JSON::XS;
 use autodie;
 
 do "get_config.pl" if (!length $begin_edate);
