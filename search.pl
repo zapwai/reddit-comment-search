@@ -51,6 +51,7 @@ my $config_report = <<"endl";
  string:$string
  print_comments:$print_option
 endl
+# download_program:$get_option
 print $config_report;
 
 if (!-e $subreddit) {

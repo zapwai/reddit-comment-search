@@ -66,29 +66,29 @@ unless(-e $listing_dir or mkdir $listing_dir) {
 
 print "Downloading thread listings.\n";
 
-# Repeat until all downloads successful. $cnt verifies.
-my $cnt=0;
-$| = 1;
-while ($cnt < $TOTAL_PERIODS) {	
-    $cnt=0;
+# Used to repeat until all downloads successful. $cnt verifies.
+#my $cnt=0;
+#$| = 1;
+#while ($cnt < $TOTAL_PERIODS) {	
+#    $cnt=0;
     my $START_TIME = $begin_edate;
     my $END_TIME = $START_TIME + $TIME_PERIOD;
     foreach my $k (1..$TOTAL_PERIODS) {
-	my $linkaddy = "https://www.reddit.com/r/".$subreddit."/search.json?q=timestamp:$START_TIME..$END_TIME&sort=new&restrict_sr=on&limit=100&syntax=cloudsearch";
+	my $linkaddy = "https://www.reddit.com/r/".$subreddit."/search.json?q=timestamp:$START_TIME..$END_TIME".'&sort=new&restrict_sr=on&limit=100&syntax=cloudsearch';
 
 	my $filename = "$listing_dir/$START_TIME-to-$END_TIME.json";
-	if (-s $filename) {
-	    $cnt++;
-	}
-	else {
+	# if (-s $filename) {
+	#     $cnt++;
+	# }
+	# else {
 	    `wget -nc -q --tries=100 -O $filename "$linkaddy"`; 
-	}
+#	}
 	$START_TIME += $TIME_PERIOD;
 	$END_TIME += $TIME_PERIOD;
 	# Some feedback is nice when downloading very long time frames.
-	print "." if ($cnt % 100 == 0);
+#	print "." if ($cnt % 100 == 0);
     }
-}
+#}
 
 #Now pull down the actual comment threads using another script.
 print "\nListings received."; 

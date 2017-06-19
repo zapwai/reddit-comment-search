@@ -16,7 +16,7 @@
 ##################################################################################
 
 require "routines.pl";
-our ($user_begin, $user_end, $subreddit, $username, $string);
+our ($user_begin, $user_end, $subreddit, $username, $string, $print_option, $get_option);
 my $config_file = "config.txt";
 
 #Normal usage would be to edit the config.txt file.
@@ -37,9 +37,15 @@ unless (-e $config_file) {
     print "Enter a string (default none): ";
     $string = <STDIN>;
 
+    print "Print comments? (yes/no): ";
+    $print_option = <STDIN>;
+
+    print "Enter downloading program (wget/aria2): ";
+    $get_option = <STDIN>;
+    
     open (my $FH, ">", $config_file)
 	or die ("I cannot write the config file. $!\n");
-    print $FH "startdate(mmddyy):".$user_begin."enddate(mmddyy):".$user_end."subreddit:".$subreddit."username:".$username."string:".$string;
+    print $FH "startdate(mmddyy):".$user_begin."enddate(mmddyy):".$user_end."subreddit:".$subreddit."username:".$username."string:".$string."print_comments:".$print_option."download_program:".$get_option;
 }
 
 #Process the config file
@@ -52,10 +58,10 @@ while (my $line = <$FH>) {
 }
 
 chomp @data;
-($user_begin, $user_end, $subreddit, $username, $string) = @data;
+($user_begin, $user_end, $subreddit, $username, $string, $print_option, $get_option) = @data;
 
 if ($subreddit =~ /^\s*$/) {
-    $subreddit = "all";
+    $subreddit = "dwarffortress";
 }
 
 our $ONE_DAY = 86400;

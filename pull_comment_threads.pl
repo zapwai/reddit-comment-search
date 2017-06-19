@@ -13,17 +13,28 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-##################################################################################
-##################################################################################
+#################################################################################
+#################################################################################
 # This script takes $subreddit as an argument.
 # (That directory will already exist if this is called from pull_links.pl)
 # 
-# This script searches EACH listing in the LINKS directory and uses wget to grab each actual comment thread.
-# It saves these as .json files in Extended_JSON_Comments.
-# If the comments come from a 'load more comments' link, they will have a dash in the filename. (e.g. 1wznk9-cf6tvjb.json)
+# This script searches EACH listing in the LINKS directory and uses wget to grab
+# each actual comment thread. It saves these as .json files
+# in Extended_JSON_Comments. If the comments come from a 'load more comments'
+# link, they will have a dash in the filename. (e.g. 1wznk9-cf6tvjb.json)
 
 ## An example of using the awesome command-line program jq:
 ## cat 008ny.json | jq ".[0].data.children[0].data.name"
+
+
+# Main body of this script is like this:
+# i) Look at a threads .json to see if it contains "kind": "more"
+# ii) if it does, run get_ids on the thread.
+# By saying $TEXT = <$LocalLink>; and calling it
+# iii) Produce the appropriate URL.
+# iv) wget the URL (it's another .json)
+# v) repeat step iv recursively if necessary.
+# (you just replace the last id with the new one.)
 
 use autodie;
 use Cpanel::JSON::XS;
@@ -37,94 +48,26 @@ if (!length $subreddit) {
 
 print " Now downloading each reddit thread.\n";
 
-my @MoreIDs;
 my $target_dir = "$subreddit/Extended_JSON_Comments";
+my $listing_dir = "$subreddit/LINKS";
 
-# This pulls MoreIDs for all sub_threads.
-sub Recursive_Fetch{
-    my ($NewName, $abbrev) = @_;
-    open (my $FILENAME, "<", $NewName);
-    my $row = <$FILENAME>;
-    close $FILENAME;
-    # Get some info from the second JSON in $row before you maul it.
-    # $abbrev is just the unique id of the main thread.
-
-    my ($FirstJSON, $SecondJSON) = split_merged_jsons($row);
-
-    my $ListingJSON = decode_json $FirstJSON;
-    my $CommentJSON = decode_json $SecondJSON;
-    my $link;
-    for my $listy ( @{$ListingJSON->{data}->{children}} ) {
-	$link = "https://www.reddit.com".$listy->{data}->{permalink};
-    }
-    my @SubIDs;
-    while ( index( $row , '"kind": "more"' ) != -1) {
-	$row = substr ( $row, index( $row , '"kind": "more"') + 6 );
-	my $start_pt = index ( $row, '"id": "' ) + 7;
-	$row = substr ( $row, $start_pt ); 
-	my $stop_pt = index ( $row, '"' );
-	my $ID = substr($row, 0, $stop_pt);
-	#normal case. Move to next occurance of id.
-	if ( $ID eq "_" ) {
-	    my $start_pt = index ( $row, '"id": "' ) + 7;
-	    $row = substr ( $row, $start_pt ); 
-	    my $stop_pt = index ( $row, '"' );
-	    $ID = substr($row, 0, $stop_pt);
-	    push @SubIDs, $ID;
-	    $row = substr ( $row, $stop_pt + 1 );
-	} else {
-	    push @SubIDs, $ID;
-	    $row = substr ( $row, $stop_pt + 1 );
-	}
-    }
-    foreach (@SubIDs) {
-	my $MoreLink = $link.$_.".json";
-	my $NewName = "./$target_dir/$abbrev-$_.json";
-	`wget -q -nc --tries=100 -O $NewName $MoreLink`;
-	Recursive_Fetch($NewName, $abbrev);
-    }
+unless (-e $target_dir or mkdir $target_dir) {
+    die "Unable to create directory $target_dir\n $! \n";
 }
-
-# This pulls MoreIDs for the main thread.
-sub print_ids {
-    my $TEXT = shift;
-    while ( index( $TEXT , '"kind": "more"' ) != -1) {
-	$TEXT = substr ( $TEXT, index( $TEXT , '"kind": "more"') + 6 );
-	my $start_pt = index ( $TEXT, '"id": "' ) + 7;
-	$TEXT = substr ( $TEXT, $start_pt ); 
-	my $stop_pt = index ( $TEXT, '"' );
-	my $ID = substr($TEXT, 0, $stop_pt);
-	if ( $ID eq "_" ) { 
-	    my $start_pt = index ( $TEXT, '"id": "' ) + 7;
-	    $TEXT = substr ( $TEXT, $start_pt ); 
-	    my $stop_pt = index ( $TEXT, '"' );
-	    $ID = substr($TEXT, 0, $stop_pt);
-	    push @MoreIDs, $ID;
-	    $TEXT = substr ( $TEXT, $stop_pt + 1 );
-	} else {
-	    push @MoreIDs, $ID;
-	    $TEXT = substr ( $TEXT, $stop_pt + 1 );
-	}
-    }
-}
-
-    unless (-e $target_dir or mkdir $target_dir) {
-	die "Unable to create directory $target_dir\n $! \n";
-    }
-
-my $Listing_dir = "$subreddit/LINKS";
+# Listings were named with edates. So we do not have to open all of them.
 my @files_to_open;
-opendir my $dir, $Listing_dir or die("Cannot open LINKS $!\n"); 
+opendir my $dir, $listing_dir    or die("Cannot open LINKS $!\n"); 
 foreach my $filename (readdir $dir) {
-    my @pieces = split "-", $filename;
+    my @pieces = split "-", $filename; 
     if ($pieces[0] >= $begin_edate and $pieces[0] < $end_edate) {
-	unshift @files_to_open, $Listing_dir."/".$filename;
+	unshift @files_to_open, $listing_dir."/".$filename;
     }
 }
 closedir $dir;
 
 my $time_counter = 0;
 $|=1;
+
 
 foreach my $file (@files_to_open) {
     open (my $FH, "<", $file);
@@ -144,26 +87,20 @@ foreach my $file (@files_to_open) {
 	unless ( -s $LocalLink ){
 	    `wget -q -nc --tries=100 -O $LocalLink $link`;
 	}
-	## Now before we move on, we should...
-	# i) Look at this threads .json to see if it contains "kind": "more"
-	# ii) if it does, run print_ids on the thread.
-	# By saying $TEXT = <$LocalLink>; and calling it
-	#  iii) Produce the appropriate URL.
-	# iv) wget the URL (it's another .json)
-	# v) repeat step iv recursively if necessary.
-	# (you just replace the last id with the new one.)
+	
 	open (my $FILEHANDLE, "<", $LocalLink);
 	my $TEXT = <$FILEHANDLE>;
 	close $FILEHANDLE;
-	my $row = $TEXT;       # lol
-	print_ids($TEXT);      # @MoreIDs is now full, or still empty.
 
-	my ($FirstJSON, $SecondJSON) = split_merged_jsons($row);
+	my ($FirstJSON, $SecondJSON) = split_merged_jsons($TEXT);
+
+	my @MoreIDs;
+	get_ids($TEXT, \@MoreIDs);   # @MoreIDs may be empty, much of the time.
 	
 	my $ListingJSON = decode_json $FirstJSON;
 	my $CommentJSON = decode_json $SecondJSON;
-	# You can use the second JSON, it also has a permalink.
-	# But only in a 'more' thread. Not a top-level.
+	# You could use the second JSON, it also has a permalink.
+	# But *only* in a 'more' thread. Not a top-level.
 	for my $listy ( @{$ListingJSON->{data}->{children}} ) {
 	    my $link = "https://www.reddit.com".$listy->{data}->{permalink};
 	    #		my $title = $listy->{data}->{title};
@@ -174,10 +111,62 @@ foreach my $file (@files_to_open) {
 		`wget -q -nc --tries=100 -O $NewName $MoreLink`;
 		Recursive_Fetch($NewName, $abbrev);
 	    }
-	    @MoreIDs = ();
 	}
     }
 }
 
 print "Threads received.\n";
 do "search.pl";
+
+# This pulls MoreIDs for all subthreads.
+sub Recursive_Fetch{
+    my ($NewName, $abbrev) = @_;
+    open (my $FILENAME, "<", $NewName);
+    my $row = <$FILENAME>;
+    close $FILENAME;
+    # Get some info from the second JSON in $row before you maul it.
+    # $abbrev is just the unique id of the main thread.
+
+    my ($FirstJSON, $SecondJSON) = split_merged_jsons($row);
+
+    my $ListingJSON = decode_json $FirstJSON;
+    my $CommentJSON = decode_json $SecondJSON;
+    my $link;
+    for my $listy ( @{$ListingJSON->{data}->{children}} ) {
+	$link = "https://www.reddit.com".$listy->{data}->{permalink};
+    }
+    
+    my @SubIDs;
+    get_ids($row, \@SubIDs);
+    foreach (@SubIDs) {
+	my $MoreLink = $link.$_.".json";
+	my $NewName = "./$target_dir/$abbrev-$_.json";
+	`wget -q -nc --tries=100 -O $NewName $MoreLink`;
+	Recursive_Fetch($NewName, $abbrev);
+    }
+}
+
+# If a .json contains a "more" kind, we need to pull that thread as well.
+sub get_ids {
+    my $TEXT = shift;
+    my $IDsRef = shift;
+    while ( index( $TEXT , '"kind": "more"' ) != -1) {
+	$TEXT = substr ( $TEXT, index( $TEXT , '"kind": "more"') + 6 );
+	my $start_pt = index ( $TEXT, '"id": "' ) + 7;
+	$TEXT = substr ( $TEXT, $start_pt ); 
+	my $stop_pt = index ( $TEXT, '"' );
+	my $ID = substr($TEXT, 0, $stop_pt);
+	if ( $ID eq "_" ) { 
+	    my $start_pt = index ( $TEXT, '"id": "' ) + 7;
+	    $TEXT = substr ( $TEXT, $start_pt ); 
+	    my $stop_pt = index ( $TEXT, '"' );
+	    $ID = substr($TEXT, 0, $stop_pt);
+	    push @{$IDsRef}, $ID;
+	    $TEXT = substr ( $TEXT, $stop_pt + 1 );
+	} else {
+	    push @{$IDsRef}, $ID;
+	    $TEXT = substr ( $TEXT, $stop_pt + 1 );
+	}
+    }
+}
+    
