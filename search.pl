@@ -15,7 +15,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 ##################################################################################
 ##################################################################################
-#
 ## Requires config.txt file.
 ## This will search each comment thread in the subreddit folder,
 ## and produce hashes of links, one for submissions, one for comments,

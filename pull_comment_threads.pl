@@ -68,7 +68,6 @@ closedir $dir;
 my $time_counter = 0;
 $|=1;
 
-
 foreach my $file (@files_to_open) {
     open (my $FH, "<", $file);
     my $str = <$FH>;
@@ -148,9 +147,8 @@ sub Recursive_Fetch{
 
 # If a .json contains a "more" kind, we need to pull that thread as well.
 sub get_ids {
-    my $TEXT = shift;
-    my $IDsRef = shift;
-    while ( index( $TEXT , '"kind": "more"' ) != -1) {
+    my ($TEXT, $IDsRef) = @_;
+    while ( index( $TEXT , '"kind": "more"' ) != -1 ) {
 	$TEXT = substr ( $TEXT, index( $TEXT , '"kind": "more"') + 6 );
 	my $start_pt = index ( $TEXT, '"id": "' ) + 7;
 	$TEXT = substr ( $TEXT, $start_pt ); 

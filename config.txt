@@ -1,10 +1,11 @@
-startdate(mmddyy):010114
-enddate(mmddyy):010414
-subreddit:Buddhism
+startdate(mmddyy):010113
+enddate(mmddyy):010213
+subreddit:dwarffortress
 username:
 string:great
-print_comments:yes
-download_program:wget
+print_comments:no
+# download_program:wget
 # Do not remove a line. Do not change the order of these lines.
 # String search is not case sensitive. (See search.pl for details.)
-# Dates are *inclusive* and use midnight as the time. (i.e. enddate 01/12 will actually use midnight of 01/13.)
+# Dates are *inclusive* and use midnight as the time.
+# (i.e. enddate 01/12 will actually use midnight of 01/13.)

@@ -16,7 +16,8 @@
 ##################################################################################
 
 require "routines.pl";
-our ($user_begin, $user_end, $subreddit, $username, $string, $print_option, $get_option);
+our ($user_begin, $user_end, $subreddit, $username,
+     $string, $print_option, $get_option);
 my $config_file = "config.txt";
 
 #Normal usage would be to edit the config.txt file.
@@ -45,7 +46,9 @@ unless (-e $config_file) {
     
     open (my $FH, ">", $config_file)
 	or die ("I cannot write the config file. $!\n");
-    print $FH "startdate(mmddyy):".$user_begin."enddate(mmddyy):".$user_end."subreddit:".$subreddit."username:".$username."string:".$string."print_comments:".$print_option."download_program:".$get_option;
+    print $FH "startdate(mmddyy):".$user_begin."enddate(mmddyy):".$user_end
+	."subreddit:".$subreddit."username:".$username."string:".$string
+	."print_comments:".$print_option."download_program:".$get_option;
 }
 
 #Process the config file
@@ -58,16 +61,20 @@ while (my $line = <$FH>) {
 }
 
 chomp @data;
-($user_begin, $user_end, $subreddit, $username, $string, $print_option, $get_option) = @data;
+($user_begin, $user_end, $subreddit, $username, $string, $print_option,
+ $get_option) = @data;
 
 if ($subreddit =~ /^\s*$/) {
     $subreddit = "dwarffortress";
 }
 
+# SET TIME! This affects $end_date, that's why it is here.
 our $ONE_DAY = 86400;
 
-(is_valid_date($user_begin)) ? our $begin_edate = get_edate($user_begin) : die "Invalid begin date.";
-(is_valid_date($user_end)) ? our $end_edate = get_edate($user_end) : die "Invalid end date.";
+(is_valid_date($user_begin)) ? our $begin_edate = get_edate($user_begin)
+    : die "Invalid begin date.";
+(is_valid_date($user_end)) ? our $end_edate = get_edate($user_end)
+    : die "Invalid end date.";
 
 # Add one day to the end_edate.
 # (The edate is midnight of the date provided, which would skip the last day.)
