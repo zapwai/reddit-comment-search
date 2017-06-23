@@ -18,3 +18,6 @@ I haven't bothered to call wget with multiple processes.
 There is currently an inoperative 'download_option' to select which program to use.
 
 ----
+
+short-term goals are to stop using do, and turn strict on.
+Will have to rewrite these separate scripts with packages.

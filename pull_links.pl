@@ -13,17 +13,19 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-##################################################################################
-##################################################################################
-
+################################################################################
+################################################################################
 ## Pulls LISTINGS of threads between specific dates using reddit's cloudsearch.
+## The timestamp uses epoch dates.
+## the subreddit/LINKS folder is created if it does not already exist.
+## user is prompted for start and end dates, as well as the subreddit name.
+## these are convered to epoch dates, the number of days counted,
+## and links for each DAY are pulled.
 
-#the subreddit/LINKS folder is created if it does not already exist.
-#user is prompted for start and end dates, as well as the subreddit name.
-#these are convered to epoch dates, the number of days counted,
-#and links for each DAY are pulled.
+#use warnings;
+#use strict;
 
-do "get_config.pl";	   # also sets $ONE_DAY, epoch time for a day.
+do "get_config.pl";		# Also sets ONE_DAY.
 
 my $TIME_PERIOD = $ONE_DAY; 
 
@@ -38,7 +40,7 @@ if ($subreddit =~ /\s/) {
     exit;
 }
 
-# Check if this subreddit already exists with a funny capitalized name,
+# Check if this subreddit already exists with a funny capitalized name
 # Use the name that already exists.
 opendir my $current_folder, "./";
 my @files_in_current_folder = readdir $current_folder;
@@ -66,28 +68,25 @@ unless(-e $listing_dir or mkdir $listing_dir) {
 
 print "Downloading thread listings.\n";
 
+my $cnt;			# counter for long downloads.
 $| = 1;
 
-my $cnt=0;
 my $START_TIME = $begin_edate;
 my $END_TIME = $START_TIME + $TIME_PERIOD;
 foreach my $k (1..$TOTAL_PERIODS) {
-    my $linkaddy = "https://www.reddit.com/r/".
-	$subreddit."/search.json?q=timestamp:$START_TIME..$END_TIME".
-	'&sort=new&restrict_sr=on&limit=100&syntax=cloudsearch';
-
+    my $linkaddy = "https://www.reddit.com/r/".$subreddit
+	."/search.json?q=timestamp:$START_TIME..$END_TIME"
+	.'&sort=new&restrict_sr=on&limit=100&syntax=cloudsearch';
     my $filename = "$listing_dir/$START_TIME-to-$END_TIME.json";
-
-
-
     `wget -nc -q --tries=100 -O $filename "$linkaddy"`; 
-
     $START_TIME += $TIME_PERIOD;
     $END_TIME += $TIME_PERIOD;
-    # Some feedback is nice when downloading very long time frames.
+
+    # Tiny bit of feedback is nice.
     $cnt++;
     print "." if ($cnt % 100 == 0);
 }
+
 
 #Now pull down the actual comment threads using another script.
 print "\nListings received."; 

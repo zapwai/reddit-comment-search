@@ -26,7 +26,6 @@
 ## An example of using the awesome command-line program jq:
 ## cat 008ny.json | jq ".[0].data.children[0].data.name"
 
-
 # Main body of this script is like this:
 # i) Look at a threads .json to see if it contains "kind": "more"
 # ii) if it does, run get_ids on the thread.
@@ -35,6 +34,9 @@
 # iv) wget the URL (it's another .json)
 # v) repeat step iv recursively if necessary.
 # (you just replace the last id with the new one.)
+#################################################################################
+#use strict;
+#use warnings;
 
 use autodie;
 use Cpanel::JSON::XS;
@@ -65,6 +67,10 @@ foreach my $filename (readdir $dir) {
 }
 closedir $dir;
 
+open $the_file, ">>", "download_file.txt"
+    or die ("Ugh, unable to open... $!\n");
+
+
 my $time_counter = 0;
 $|=1;
 
@@ -72,9 +78,9 @@ foreach my $file (@files_to_open) {
     open (my $FH, "<", $file);
     my $str = <$FH>;
     close $FH;
-    my $listing = decode_json $str;
+    my $ListingJSON = decode_json $str;
     
-    foreach my $item ( @{$listing->{data}->{children}} ) {
+    foreach my $item ( @{$ListingJSON->{data}->{children}} ) {
 	$time_counter++;
 
 	print "." if ($time_counter % 100 == 0);
@@ -84,47 +90,66 @@ foreach my $file (@files_to_open) {
 	my $link = "https://www.reddit.com/r/$subreddit/".$abbrev.".json";
 	my $LocalLink = "./$target_dir/$abbrev.json";
 	unless ( -s $LocalLink ){
-	    `wget -q -nc --tries=100 -O $LocalLink $link`;
-	}
-	
-	open (my $FILEHANDLE, "<", $LocalLink);
-	my $TEXT = <$FILEHANDLE>;
-	close $FILEHANDLE;
-
-	my ($FirstJSON, $SecondJSON) = split_merged_jsons($TEXT);
-
-	my @MoreIDs;
-	get_ids($TEXT, \@MoreIDs);   # @MoreIDs may be empty, much of the time.
-	
-	my $ListingJSON = decode_json $FirstJSON;
-	my $CommentJSON = decode_json $SecondJSON;
-	# You could use the second JSON, it also has a permalink.
-	# But *only* in a 'more' thread. Not a top-level.
-	for my $listy ( @{$ListingJSON->{data}->{children}} ) {
-	    my $link = "https://www.reddit.com".$listy->{data}->{permalink};
-	    #		my $title = $listy->{data}->{title};
-	    #		$edate = $listy->{data}->{created_utc};
-	    foreach ( @MoreIDs ) {
-		my $MoreLink = $link.$_.".json";
-		my $NewName = "./$target_dir/$abbrev-$_.json";
-		`wget -q -nc --tries=100 -O $NewName $MoreLink`;
-		Recursive_Fetch($NewName, $abbrev);
-	    }
+	    print $the_file $link."\n";
 	}
     }
 }
 
+# Downloading the first page of comments in a single call, much faster.
+`wget -nc -i "download_file.txt"`;
+unlink "download_file.txt";
+
+foreach my $filename (<"./*.json">) {
+    rename $filename, $target_dir."/".$filename;
+}
+
+# The sub-pages will be slower.
+# Because we're going to download, then open, then download more, etc.
+foreach my $LocalLink (<"$target_dir/*.json">) {
+    open (my $FILEHANDLE, "<", $LocalLink);
+    my $TEXT = <$FILEHANDLE>;
+    close $FILEHANDLE;
+
+    my ($FirstJSON, $SecondJSON) = split_merged_jsons($TEXT);
+
+    my @MoreIDs;
+    get_ids($TEXT, \@MoreIDs);
+    ## MoreIDs is now empty if there is only one page of comments.
+	
+    my $ListingJSON = decode_json $FirstJSON;
+    my $CommentJSON = decode_json $SecondJSON;
+    # You could use the second JSON, it also has a permalink.
+    # But *only* in a 'more' thread. Not a top-level.
+    for my $listy ( @{$ListingJSON->{data}->{children}} ) {
+	my $fullname = $listy->{data}->{name}; 
+	my $abbrev = substr $fullname, 3; # abbrev is the id
+		
+	my $link = "https://www.reddit.com".$listy->{data}->{permalink};
+	#		my $title = $listy->{data}->{title};
+	#		$edate = $listy->{data}->{created_utc};
+	foreach ( @MoreIDs ) {
+	    my $MoreLink = $link.$_.".json";
+	    my $new_name = "./$target_dir/$abbrev-$_.json";
+	    `wget -q -nc --tries=100 -O $new_name $MoreLink`;
+	    recursive_fetch($new_name, $abbrev);
+	}
+    }
+}
+
+close $the_file;
+
 print "Threads received.\n";
+
 do "search.pl";
 
 # This pulls MoreIDs for all subthreads.
-sub Recursive_Fetch{
-    my ($NewName, $abbrev) = @_;
-    open (my $FILENAME, "<", $NewName);
-    my $row = <$FILENAME>;
-    close $FILENAME;
+sub recursive_fetch{
+    my ($new_name, $abbrev) = @_;
+    open (my $filename, "<", $new_name);
+    my $row = <$filename>;
+    close $filename;
     # Get some info from the second JSON in $row before you maul it.
-    # $abbrev is just the unique id of the main thread.
+    # $abbrev is the unique id of the main thread.
 
     my ($FirstJSON, $SecondJSON) = split_merged_jsons($row);
 
@@ -139,9 +164,9 @@ sub Recursive_Fetch{
     get_ids($row, \@SubIDs);
     foreach (@SubIDs) {
 	my $MoreLink = $link.$_.".json";
-	my $NewName = "./$target_dir/$abbrev-$_.json";
-	`wget -q -nc --tries=100 -O $NewName $MoreLink`;
-	Recursive_Fetch($NewName, $abbrev);
+	my $new_name = "./$target_dir/$abbrev-$_.json";
+	`wget -q -nc --tries=100 -O $new_name $MoreLink`;
+	recursive_fetch( $new_name, $abbrev );
     }
 }
 
@@ -167,4 +192,3 @@ sub get_ids {
 	}
     }
 }
-    
