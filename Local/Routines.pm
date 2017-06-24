@@ -1,4 +1,3 @@
-#!/usr/bin/perl
 # Reddit Comment Search
 # Copyright (C) 2017 David Ferrone
 # This program is free software: you can redistribute it and/or modify
@@ -15,9 +14,16 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 ##################################################################################
 ##################################################################################
+
+package Local::Routines;
+use Exporter 'import';
+our @EXPORT = qw( split_merged_jsons is_valid_date get_edate );
+
 use DateTime;
+
 # I want the location of the  second  occurance of the word "Listing".
 # I need to split the JSONs a bit earlier than this, at comma.
+
 sub split_merged_jsons {
     my $row = shift;
     my $MehPt = index( $row, 'Listing' ) + 3;
