@@ -170,13 +170,13 @@ sub pull_comment_threads {
     close $the_file;
     unlink "download_file.txt";
 
-    foreach my $filename (<"./*.json">) {
+    foreach my $filename (glob "./*.json") {
 	rename $filename, $target_dir."/".$filename;
     }
 
     # The sub-pages will be slower.
     # Because we're going to download, then open, then download more, etc.
-    foreach my $LocalLink (<"$target_dir/*.json">) {
+    foreach my $LocalLink (glob "$target_dir/*.json") {
 	open (my $FILEHANDLE, "<", $LocalLink);
 	my $TEXT = <$FILEHANDLE>;
 	close $FILEHANDLE;

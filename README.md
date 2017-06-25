@@ -7,11 +7,7 @@ Uses wget and Perl with the DateTime and Cpanel::JSON::XS modules.
 
 Usage:
 1) Edit the config file,
-2) Type "perl pull_links.pl" in the terminal.
-
-or if you've already pulled the threads down,
-
-2) Type "perl search.pl" in the terminal.
+2) Type "perl driver.pl" in the terminal.
 
 ----
 
@@ -30,6 +26,7 @@ Todo:
 3) Allow multiple subreddits. (Trivial for the user to just run the program repeatedly though.)
 4) UTF support, both in thread titles and body (currently says 'Wide character' for special characters.)
 5) Provide some better feedback when pulling listings or threads, so the user knows ETA.
+6) Should auto-detect, rather than asking whether you would like to download links.
 
 Bugs:
 1) Prints all link submissions, regardless of date.
